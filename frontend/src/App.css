@@ -1,0 +1,142 @@
+:root {
+  --f1-red: #FF1E1E;
+  --bg-dark: #0B0E11;
+  --panel-dark: #15191E;
+  --text-main: #E1E4E8;
+  --border-dim: #30363D;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  margin: 0;
+}
+
+.janus-dashboard {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background: var(--panel-dark);
+  border-right: 1px solid var(--border-dim);
+  padding: 2rem 1rem;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--f1-red);
+  margin-bottom: 2rem;
+}
+
+.status-pill {
+  font-size: 0.7rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  border: 1px solid transparent;
+}
+
+.status-pill.green { color: #3FB950; border-color: #3FB950; }
+.status-pill.blue { color: #388BFD; border-color: #388BFD; }
+
+.mission-control {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-bar {
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.transmission {
+  margin-bottom: 1.5rem;
+  max-width: 850px;
+}
+
+.caller-id {
+  font-size: 0.65rem;
+  color: var(--f1-red);
+  margin-bottom: 0.3rem;
+  font-weight: bold;
+}
+
+.content {
+  background: #1C2128;
+  padding: 1rem;
+  border-radius: 4px;
+  line-height: 1.6;
+  border-left: 3px solid var(--border-dim);
+}
+
+.transmission.user .content {
+  border-left-color: var(--f1-red);
+}
+
+.comms-input {
+  padding: 1.5rem 2rem;
+  display: flex;
+  gap: 1rem;
+  background: var(--panel-dark);
+}
+
+input {
+  flex: 1;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dim);
+  color: white;
+  padding: 0.8rem 1rem;
+  border-radius: 4px;
+}
+
+button {
+  background: var(--f1-red);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+/* Table Container */
+.content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  border: 1px solid var(--border-dim);
+}
+
+/* Header Cells */
+.content th {
+  background-color: var(--f1-red);
+  color: white;
+  text-align: left;
+  padding: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Body Cells */
+.content td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-dim);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Hover effect for a "live" feel */
+.content tr:hover td {
+  background-color: rgba(255, 30, 30, 0.1);
+}

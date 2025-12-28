@@ -1,0 +1,177 @@
+import os
+import nest_asyncio
+import requests
+from dotenv import load_dotenv
+from llama_parse import LlamaParse
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import TextLoader
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_pinecone import PineconeVectorStore
+from pinecone import Pinecone, ServerlessSpec
+from langchain_core.documents import Document
+
+# Fix for asyncio loop issues in scripts
+nest_asyncio.apply()
+
+load_dotenv()
+
+if os.getenv("MUNIN"):
+    os.environ["PINECONE_API_KEY"] = os.getenv("MUNIN")
+
+# CONFIGURATION 
+PINECONE_KEY = os.getenv("MUNIN")
+LLAMA_KEY = os.getenv("LLAMA_CLOUD_API_KEY") 
+INDEX_NAME = "f1-regulations-all"
+
+if not LLAMA_KEY:
+    raise ValueError(" MISSING LLAMA_CLOUD_API_KEY in .env file!")
+
+if not PINECONE_KEY:
+    raise ValueError(" MISSING MUNIN (Pinecone Key) in .env file!")
+
+# 1. SETUP PINECONE 
+pc = Pinecone(api_key=PINECONE_KEY)
+
+# Create index if it doesn't exist (or clear it if you want a fresh start)
+if INDEX_NAME in [i.name for i in pc.list_indexes()]:
+    print(f" Clearing old index '{INDEX_NAME}'...")
+    pc.delete_index(INDEX_NAME)
+
+print(f" Creating new index '{INDEX_NAME}'...")
+pc.create_index(
+    name=INDEX_NAME,
+    dimension=384,
+    metric="cosine",
+    spec=ServerlessSpec(cloud="aws", region="us-east-1")
+)
+
+# 2. DOWNLOAD SOURCES 
+# We include 2022-2024 so the "Continuity Rule" works (looking back when 2025 is silent).
+# pdf_urls = {
+#     "2026_regs_tech_iss15.pdf": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_15_-_2025-12-10.pdf",
+#     "2026_regs_sport_iss04.pdf": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_04_-_2025-12-10.pdf",
+#     "2026_regs_operational_iss05.pdf": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_f_operational_-_iss_05_-_2025-12-10_1.pdf",
+#     "2026_regs.pdf": "https://www.fia.com/sites/default/files/fia_2026_formula_1_technical_regulations_issue_8_-_2024-06-24.pdf",
+#     "2025_regs_tech_iss03.pdf": "https://www.fia.com/sites/default/files/fia_2025_formula_1_technical_regulations_-_issue_3_-_2025-04-07.pdf",
+#     "2025_regs.pdf": "https://api.fia.com/sites/default/files/fia_2025_formula_1_technical_regulations_-_issue_01_-_2024-12-11_1.pdf",
+#     "2024_regs.pdf": "https://www.fia.com/sites/default/files/fia_2024_formula_1_technical_regulations_-_issue_3_-_2023-12-06.pdf",
+#     "2023_regs.pdf": "https://www.fia.com/sites/default/files/fia_2023_formula_1_technical_regulations_-_issue_1_-_2022-06-29.pdf",
+#     "2022_regs.pdf": "https://api.fia.com/sites/default/files/formula_1_-_technical_regulations_-_2022_-_iss_11_-_2022-04-29.pdf"
+# }
+# JANUS 2.0: Official FIA Regulation Ingestion Manifest
+# Updated: December 26, 2025
+
+pdf_urls = {
+    # --- 2026 ERA: THE "NIMBLE CAR" REBORN (Finalized Dec 10, 2025) ---
+    # Includes Issue 15: The definitive word on Compression Ratios and Active Aero
+    "2026_regs_tech_iss15.pdf": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_15_-_2025-12-10.pdf",
+    
+    # Includes Issue 04: Sporting rules for Overtake Mode and the 26-Dec Fuel Temperature Ban
+    "2026_regs_sport_iss04.pdf": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_04_-_2025-12-10.pdf",
+    
+    # Includes Issue 05: Operational/Factory constraints for the transition
+    "2026_regs_operational_iss05.pdf": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_f_operational_-_iss_05_-_2025-12-10_1.pdf",
+    
+    # Includes Section A: General Governance for the 2026 World Championship
+    "2026_regs_general_iss01.pdf": "https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_a_general_regulatory_provisions_-_iss_01_-_2025-12-10_0.pdf",
+
+    # --- 2025 ERA: THE FINAL GROUND EFFECT YEAR ---
+    # Final Issue 3: Driver Cooling Kits and 800kg Minimum Weight (incl. driver)
+    "2025_regs_tech_iss03.pdf": "https://api.fia.com/sites/default/files/documents/fia_2025_formula_1_technical_regulations_-_issue_03_-_2025-04-07.pdf",
+    "2025_regs.pdf": "https://api.fia.com/sites/default/files/fia_2025_formula_1_technical_regulations_-_issue_01_-_2024-12-11_1.pdf",
+    
+    # --- HISTORICAL CONTINUITY (THE ARCHIVE) ---
+    "2024_regs_tech.pdf": "https://www.fia.com/sites/default/files/fia_2024_formula_1_technical_regulations_-_issue_3_-_2023-12-06.pdf",
+    "2023_regs_tech.pdf": "https://www.fia.com/sites/default/files/fia_2023_formula_1_technical_regulations_-_issue_1_-_2022-06-29.pdf",
+    "2022_regs_tech.pdf": "https://www.fia.com/sites/default/files/2022_formula_1_technical_regulations_-_iss_3_-_2021-02-19.pdf",
+    "2022_regs.pdf": "https://api.fia.com/sites/default/files/formula_1_-_technical_regulations_-_2022_-_iss_11_-_2022-04-29.pdf"
+}
+
+for name, url in pdf_urls.items():
+    if not os.path.exists(name):
+        print(f" Downloading {name}...")
+        try:
+            r = requests.get(url, timeout=30)
+            with open(name, 'wb') as f:
+                f.write(r.content)
+        except Exception as e:
+            print(f" Failed to download {name}: {e}")
+
+# 3. PARSE WITH LLAMAPARSE 
+# --- 3. PARSE WITH LLAMAPARSE (CONSOLIDATED) ---
+print("👀 Parsing PDFs with LlamaParse (Extracting Tables & Graphs)...")
+parser = LlamaParse(
+    result_type="markdown", 
+    api_key=LLAMA_KEY,
+    verbose=True,
+    num_workers=4,
+    # Instruction helps extract Article numbers and math formulas correctly
+    parsing_instruction="This is an F1 Technical Regulation. Extract all tables precisely. Pay close attention to Article numbers (e.g., C4.1.1) and units (kg, mm, kW)."
+)
+
+all_docs = []
+
+# SINGLE LOOP: Process each file exactly once
+for filename in pdf_urls.keys():
+    if os.path.exists(filename):
+        print(f" Reading and Tagging: {filename}...")
+        parsed_docs = parser.load_data(filename)
+        
+        # 1. EXTRACT CORE METADATA (Year must be INT)
+        parts = filename.split("_")
+        doc_year = int(parts[0]) 
+        
+        # 2. SECTION TAGGING
+        if "tech" in filename: section = "Technical" 
+        elif "sport" in filename: section = "Sporting"
+        elif "operational" in filename: section = "Operational"
+        elif "general" in filename: section = "General"
+        else: section = "General"
+
+        # 3. PRIORITY & ERA
+        # Finalized 2026 (Iss 15) and 2025 (Iss 03) get Priority 1
+        priority = 1 if "iss" in filename else 2
+        era = "Nimble Car" if doc_year >= 2026 else "Ground Effect"
+
+        # 4. ENRICH EVERY PAGE
+        for doc in parsed_docs:
+            lc_doc = Document(
+                page_content=doc.text,
+                metadata={
+                    "source": filename,
+                    "year": doc_year,      
+                    "section": section,    
+                    "priority": priority,  
+                    "era": era
+                }
+            )
+            all_docs.append(lc_doc)
+    else:
+        print(f" Skipping {filename} (not found locally).")
+
+
+# Process Cheat Sheet (Only if it exists - for specific synonyms/overrides)
+if os.path.exists("src/concepts.txt"):
+    print("  Reading Cheat Sheet...")
+    loader = TextLoader("src/concepts.txt")
+    cheat_docs = loader.load()
+    for d in cheat_docs: 
+        d.metadata["year"] = "General"
+        d.metadata["source"] = "CheatSheet"
+        d.metadata["era"] = "Universal"
+    all_docs.extend(cheat_docs)
+
+# 4. CHUNK & UPLOAD 
+print(f" Splitting {len(all_docs)} pages into chunks...")
+splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+chunks = splitter.split_documents(all_docs)
+
+print(f"Uploading {len(chunks)} chunks to Pinecone...")
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+vectorstore = PineconeVectorStore.from_documents(
+    documents=chunks,
+    embedding=embeddings,
+    index_name=INDEX_NAME
+)
+
+print("DONE. The Brain can now read tables natively and remembers the past.")

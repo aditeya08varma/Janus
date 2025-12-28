@@ -1,0 +1,27 @@
+### ERA SYNONYMS
+[Ground Effect Era] = 2022, 2023, 2024, 2025, Current Era
+[Nimble Car Era] = 2026, 2027, Future Era, New Generation
+
+### CHASSIS & MASS (SECTION C)
+[Weight] = Mass, Minimum Mass, Article C4.1
+[Car Size] = Wheelbase, Width, Overall Width, Track, Article C2
+[Floor] = Ground Effect Tunnels (2025), Flat Floor (2026), Diffuser, Article C3.5
+[Ballast] = Weight Distribution, Article C4.4
+
+### AERODYNAMICS (SECTION C & B)
+[DRS] = Drag Reduction System (2025), Active Aero (2026), Moveable Wings
+[Active Aero] = Adjustable front and rear wings, Straight Mode, Corner Mode
+[X-Mode] = Straight Mode, Low Drag Mode, High Speed Configuration
+[Z-Mode] = Corner Mode, High Downforce Mode, Standard Configuration
+
+### POWER UNIT & OVERTAKING
+[Engine] = Power Unit, ICE, Internal Combustion Engine, Article 5
+[Turbo] = Turbocharger, TC, Article 5.1.4
+[Hybrid System] = ERS, Energy Recovery System, MGU-K, MGU-H (Archive only)
+[Overtake Mode] = Manual Override, MGU-K Override, Overtake Button, Article 5.14
+[Boost] = Energy Deployment, ERS Boost, Max Power Setting
+[Recharge] = Harvesting, Recovery, Lift-off Regen, Article 5.15
+
+### SAFETY (SECTION C)
+[Crash Structure] = FIS (Front Impact Structure), Two-stage nose, Side intrusion
+[Roll Bar] = Roll Hoop, Secondary Roll Structure, Article C12

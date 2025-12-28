@@ -1,5 +1,30 @@
-.env
+# --- PYTHON / BACKEND ---
 __pycache__/
-*.pyc
-.DS_Storevenv/
+*.py[cod]
+*$py.class
 venv/
+.venv/
+backend/janus_cache.json
+
+# --- NODE / FRONTEND ---
+node_modules/
+dist/
+dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- SECRETS & CONFIG ---
+.env
+.env.local
+.env.*
+!.env.example
+
+# --- SYSTEM / OS ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.sw?

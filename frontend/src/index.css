@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@layer base {
+  /* Fix the scrollbar to look like a telemetry console */
+  ::-webkit-scrollbar {
+    width: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0B0E11;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #30363D;
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #FF1E1E;
+  }
+}
+
+@layer components {
+  /* Override Tailwind Typography (Prose) to declutter the output */
+  .prose {
+    --tw-prose-body: rgba(226, 232, 240, 0.9);
+    --tw-prose-headings: #FF1E1E;
+    --tw-prose-bold: #FF1E1E;
+    --tw-prose-quotes: #94a3b8;
+    max-width: none !important; /* Prevent awkward narrow columns */
+  }
+
+  /* Increase spacing between blocks of info */
+  .prose p {
+    @apply mb-5 leading-relaxed;
+  }
+
+  /* Make tables look like professional data grids */
+  .prose table {
+    @apply my-6 border-collapse text-left text-xs border border-white/10 rounded-lg overflow-hidden;
+  }
+
+  .prose thead {
+    @apply bg-red-950/30 border-b border-white/10;
+  }
+
+  .prose th {
+    @apply p-3 uppercase tracking-tighter text-red-500 font-black;
+  }
+
+  .prose td {
+    @apply p-3 border-b border-white/5;
+  }
+
+  /* Make Headers stand out with proper margin-top */
+  .prose h1, .prose h2, .prose h3 {
+    @apply mt-8 mb-4 font-black tracking-tighter border-b border-white/5 pb-2;
+  }
+
+  /* Styling for the "Inline Code" blocks (Articles/Numbers) */
+  .prose :not(pre) > code {
+    @apply bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded font-bold border border-red-500/20 before:content-none after:content-none;
+  }
+}
