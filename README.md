@@ -1,59 +1,53 @@
-# 🏎️ Project Documentation: JANUS 2.0
+# 🏎️ Janus 2.0: F1 Technical Regulation Intelligence
 
-**Status**: Active / Deployment Ready  
+**Status**: 🟢 Production / Live  
 **Engine**: DeepSeek-V3 (Hugin)  
-**Database**: Pinecone (Munin)
+**Memory**: Pinecone Vector DB (Munin)  
+**Cache**: Redis High-Speed Key-Value
 
 ---
 
-## 1. 🏎️ JANUS 2.0: A Bridge Between F1 Eras
+## 1. 🏎️ Janus 2.0: A Bridge Between F1 Eras
 
 ### "Why Janus?"
-In Roman mythology, **Janus** is the god of transitions, depicted with two faces—one looking back at the past and the other looking toward the future. 
+In Roman mythology, **Janus** is the god of transitions, depicted with two faces—one looking back at the past and the other looking toward the future.
 
-I chose this name because Formula 1 is currently standing at its own crossroads. As we move from the high-downforce "Ground Effect" cars of 2022-2025 into the "Nimble Car" era of 2026, the sport is essentially reinventing itself. I engineered this project to be that bridge: a technical partner that understands where we’ve been and exactly where we are going.
+I chose this name because Formula 1 is currently standing at its own crossroads. As we move from the high-downforce **"Ground Effect"** cars of **2022–2025** into the **"Nimble Car"** era of **2026**, the sport is essentially reinventing itself. I engineered this project to be that bridge: a technical partner that understands where we’ve been and exactly where we are going.
 
 ### 🧠 The Thought & The Memory
 To give Janus a "brain," I looked to Norse mythology. Odin had two ravens that traveled the world to bring him truth:
 
-* **Hugin (Thought)**: This is the reasoning engine. I named the **DeepSeek-V3** implementation Hugin because it handles the complex technical "thinking" and logic gates.
-* **Munin (Memory)**: This is the **Pinecone Vector Database**. It acts as the system's long-term memory, holding the raw data of the FIA regulations so they are never forgotten or misinterpreted.
+- **Hugin (Thought)**: The **DeepSeek-V3** reasoning engine. I named the implementation Hugin because it handles complex technical thinking, logic gates, and agentic tool use via **LangGraph**.
+- **Munin (Memory)**: The **Pinecone Vector Database**. It acts as the system's long-term memory, holding the raw data of the official FIA regulations so they are never forgotten or misinterpreted.
 
 ---
 
 ## 🎯 The Story Behind the Code
 
-This project started with a personal challenge: *"Can I build a RAG system that is actually reliable?"*
+### The Problem: The Hallucination Gap
+In a sport where a **1mm** difference in a wing endplate can lead to disqualification, "close enough" is a failure. Standard LLMs often hallucinate niche rules that sound confident but are technically incorrect.
 
-I didn't want to just follow a tutorial and build another generic chatbot. I wanted to build something for people like me—F1 enthusiasts who have endless questions but don't want to spend their weekends digging through 100-page PDF files of professional technical jargon just to find a single spec.
-
-**The Problem: The Hallucination Gap**
-If you ask a standard LLM about a niche F1 rule, it will often "hallucinate" an answer that *sounds* confident but is technically wrong. In a sport where a 1mm difference in a wing endplate can lead to a disqualification, "close enough" is a failure. 
-
-**The Janus Mission: Truth over Creativity**
-I built this to be a high-fidelity technical partner. Instead of "training" a model to guess, I’ve **engineered a RAG pipeline** that anchors every response in official FIA documentation. I have prioritized **fact-grounding over generative flair**: if the data isn't in the regulations, Janus is programmed to tell you it doesn't know rather than making up a fact. 
-
-For a true F1 enthusiast, accuracy is the only metric that matters.
+### The Janus Mission: Truth over Creativity
+I engineered a **RAG (Retrieval-Augmented Generation) pipeline** that anchors every response in official FIA documentation. I prioritized **fact-grounding over generative flair**: if the data isn't in the regulations, Janus is programmed to report that it doesn't know rather than making up a fact.
 
 ---
 
 ## 2. System Architecture
-The project is structured as a **Monorepo**, separating the high-speed streaming engine from the specialized telemetry dashboard.
+The project is structured as a **monorepo**, separating the high-speed streaming engine from the specialized telemetry dashboard.
 
 ### 📂 Directory Structure
 ```text
 JANUS/
 ├── backend/             # Python FastAPI Service
-│   ├── api.py           # REST API & Cache Logic
+│   ├── api.py           # REST API & Redis Cache Logic
 │   ├── graph.py         # LangGraph State Machine
 │   ├── ingest.py        # Data Ingestion Tools
-│   ├── requirements.txt # Backend Dependencies
-│   └── janus_cache.json # Persistent Memory
-├── frontend/            # React 19 / Vite UI
-│   ├── src/             # Application Logic (App.jsx)
-│   ├── package.json     # Frontend Dependencies
-│   └── .env.local       # Local Environment Config
-└── .gitignore           # Master ignore (Root)
+│   ├── Dockerfile       # Container with Pre-baked Brain
+│   └── requirements.txt # Backend Dependencies
+└── frontend/            # React 19 / Vite UI
+    ├── src/App.jsx      # Application Logic & HUD
+    ├── package.json     # Frontend Dependencies
+    └── vite.config.js   # Production Build Config
 ```
 
 ---
@@ -61,128 +55,62 @@ JANUS/
 ## 3. Technical Specifications
 
 ### Core Protocols
-- **The Time Barrier**: Hard-coded logic gates ensure 2026 specs are never hallucinated into 2025 queries.
-- **Continuity Protocol**: An automated fallback algorithm that checks 2022–2024 regulations when 2025 data points are carried over without explicit mention in newer documents.
-- **Persistent LRU Cache**: A localized JSON-based cache that stores up to 100 technical briefings, enabling instant retrieval for repeat queries.
+- **Semantic Translation**: Bridges user jargon to official FIA terminology (e.g., `"DRS in 2026"` → `"Active Aero"` or `"X/Z Mode"`).
+- **Hierarchical Fallback**: Automated continuity checks across **2022–2025** when 2026 data points are carried over without explicit mention in newer documents.
+- **Docker "Pre-Bake"**: To prevent cold-start timeouts on the server, the embedding model (**all-MiniLM-L6-v2**) is downloaded during the image build process.
 
 ### Tech Stack
 | Tier | Technology |
 |------|------------|
 | LLM | DeepSeek-V3 (Hugin) |
-| RAG | Pinecone Vector DB (Munin) |
-| Frameworks | LangGraph, FastAPI, React 19 |
-| Styling | Tailwind CSS 4 |
+| Vector DB | Pinecone (Munin) |
+| Orchestration | LangGraph & FastAPI |
+| Memory / Cache | Redis (Render Key-Value) |
+| UI | React 19 + Tailwind CSS 4 |
 
-----
+---
 
 ## 4. Installation & Deployment Guide
 
 ### Phase 1: Local Environment Setup
 
 #### Backend Initialization
-Navigate to the backend directory:
 ```bash
 cd backend
-```
-
-Install dependencies:
-```bash
 pip install -r requirements.txt
-```
-
-Boot the API:
-```bash
-python api.py
+uvicorn api:app --reload
 ```
 
 #### Frontend Initialization
-Navigate to the frontend directory:
 ```bash
 cd frontend
-```
-
-Install packages:
-```bash
 npm install
-```
-
-Launch development server:
-```bash
 npm run dev
 ```
 
 ### Phase 2: Production Deployment
 
-#### Backend (Railway)
-- Deploy the `/backend` folder.
-- Mount a **Volume** to `/backend` to ensure `janus_cache.json` persists.
+#### Backend (Render Web Service)
+- Containerized via **Docker** and hosted on **Render** as a Web Service.
+- Requires environment keys:
+  - `REDIS_URL`
+  - `HUGIN`
+  - `MUNIN`
 
-#### Frontend (Vercel)
-- Deploy the `/frontend` folder.
-- Link via the `VITE_API_URL` environment variable.
+#### Frontend (Render Static Site)
+- Hosted as a **Static Site** on Render.
+- Connected via `VITE_API_URL` to ensure cross-origin telemetry streaming.
 
 ---
 
-## 5. Maintenance & Support
+## 5. System Logic Flow
 
-### Updating Specifications
-To update the knowledge base with new official FIA releases:
-1. Place new PDFs in the `data` folder.
-2. Run the ingestion script:
-```bash
-python backend/ingest.py
-```
+### Data Routing Workflow
+1. **Driver Query**: User enters a question (e.g., "How is 2026 power different?").
+2. **Semantic Mapping**: System translates query terms to FIA technical nomenclature.
+3. **Parallel Search**: Agentic tools query Pinecone across multiple regulatory "Issues" to find finalized truth.
+4. **Telemetry Stream**: Search logs are streamed to the UI in real-time as the agent thinks.
+5. **Final Briefing**: Answer is synthesized in Markdown tables and cached in Redis for instant repeat retrieval.
 
-### Troubleshooting
-- **Telemetry Loss**: Usually caused by CORS mismatches or missing environment keys.
-- **Cache Misses**: Ensure `janus_cache.json` has write permissions in your hosting environment.
-
-graph LR
-    subgraph Frontend [React HUD]
-    UI[App.jsx]
-    HUD[Visual HUD Elements]
-    end
-
-    subgraph Backend [FastAPI Service]
-    API[api.py]
-    Cache[(LRU Cache)]
-    Graph[LangGraph Logic]
-    end
-
-    subgraph Memory [Cloud Services]
-    Munin[(Pinecone Vector DB)]
-    Hugin[DeepSeek-V3 LLM]
-    end
-
-    UI <--> API
-    API <--> Cache
-    API <--> Graph
-    Graph <--> Munin
-    Graph <--> Hugin
-    
-    style UI fill:#111418,stroke:#FF1E1E,color:#fff
-    style API fill:#111418,stroke:#FF1E1E,color:#fff
-    style Munin fill:#0055ff,stroke:#fff,color:#fff
-    style Hugin fill:#FF1E1E,stroke:#fff,color:#fff
-
-graph TD
-    Start((Driver Query)) --> Input[Semantic Translation]
-    Input --> Router{Intent?}
-    
-    Router -- 2026 Specific --> S1[Search: 2026 Namespace]
-    Router -- Comparison --> S2[Parallel Search: 2025 & 2026]
-    Router -- General --> S1
-    
-    S1 --> Check{Data Found?}
-    Check -- No --> Fallback[Continuity Protocol: Fallback to 2025]
-    Check -- Yes --> Final[TD Briefing Generation]
-    
-    Fallback --> S3[Search: 2025 Namespace]
-    S3 --> Final
-    S2 --> Final
-    
-    Final --> Briefing((Engineer Output))
-    
-    style Start fill:#FF1E1E,stroke:#fff,color:#fff
-    style Briefing fill:#FF1E1E,stroke:#fff,color:#fff
-    style Fallback fill:#f39c12,stroke:#fff,color:#fff
+### Technical Director's Verdict
+**Janus 2.0 represents a production-ready implementation of an agentic RAG system tailored for high-accuracy sporting regulations.**
