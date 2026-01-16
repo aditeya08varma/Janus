@@ -1,0 +1,30 @@
+# --- SYSTEM TRASH ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+
+# --- GIT ---
+.git/
+.gitignore
+
+# --- SECRETS (Render injects these securely) ---
+.env
+
+# --- CONSTRUCTION TOOLS (Local Use Only) ---
+ingest.py
+concepts.txt
+download_model.py
+docs/
+*.pdf
+README.md
+
+# --- FRONTEND (Safety check: ignore if accidentally copied) ---
+node_modules/
+frontend/
+dist/

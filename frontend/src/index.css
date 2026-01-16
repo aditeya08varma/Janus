@@ -1,7 +1,7 @@
-@import "tailwindcss";
+/* @import "tailwindcss";
 
 @layer base {
-  /* Fix the scrollbar to look like a telemetry console */
+  
   ::-webkit-scrollbar {
     width: 5px;
   }
@@ -18,21 +18,20 @@
 }
 
 @layer components {
-  /* Override Tailwind Typography (Prose) to declutter the output */
+  
   .prose {
     --tw-prose-body: rgba(226, 232, 240, 0.9);
     --tw-prose-headings: #FF1E1E;
     --tw-prose-bold: #FF1E1E;
     --tw-prose-quotes: #94a3b8;
-    max-width: none !important; /* Prevent awkward narrow columns */
+    max-width: none !important; 
   }
 
-  /* Increase spacing between blocks of info */
+  
   .prose p {
     @apply mb-5 leading-relaxed;
   }
 
-  /* Make tables look like professional data grids */
   .prose table {
     @apply my-6 border-collapse text-left text-xs border border-white/10 rounded-lg overflow-hidden;
   }
@@ -49,13 +48,81 @@
     @apply p-3 border-b border-white/5;
   }
 
-  /* Make Headers stand out with proper margin-top */
   .prose h1, .prose h2, .prose h3 {
     @apply mt-8 mb-4 font-black tracking-tighter border-b border-white/5 pb-2;
   }
 
-  /* Styling for the "Inline Code" blocks (Articles/Numbers) */
   .prose :not(pre) > code {
     @apply bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded font-bold border border-red-500/20 before:content-none after:content-none;
   }
+} */
+
+@import "tailwindcss";
+
+@layer base {
+  /* Scrollbar - Toned down to gray/dark */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #0B0E11; }
+  ::-webkit-scrollbar-thumb { background: #30363D; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #FF1E1E; }
+}
+
+@layer components {
+  /* Override Tailwind Typography - Stealth Gray Mode */
+  .prose {
+    --tw-prose-body: rgba(226, 232, 240, 0.8);
+    --tw-prose-headings: #E1E4E8; /* White/Gray headers, not Red */
+    --tw-prose-bold: #FF1E1E; /* Keep bold text red for emphasis */
+    --tw-prose-quotes: #94a3b8;
+    max-width: none !important;
+  }
+
+  .prose p { @apply mb-5 leading-relaxed; }
+
+  /* Tables - Clean, Professional Grid */
+  .prose table {
+    @apply my-6 border-collapse text-left text-xs border border-white/5 rounded-lg overflow-hidden;
+  }
+  .prose thead { @apply bg-white/5 border-b border-white/10; } /* Dark gray header */
+  .prose th { @apply p-3 uppercase tracking-tighter text-gray-400 font-bold; } /* Gray text */
+  .prose td { @apply p-3 border-b border-white/5; }
+
+  .prose h1, .prose h2, .prose h3 {
+    @apply mt-8 mb-4 font-black tracking-tighter border-b border-white/5 pb-2 text-white;
+  }
+
+  /* Inline Code - Subtle Highlights */
+  .prose :not(pre) > code {
+    @apply bg-white/5 text-gray-300 px-1.5 py-0.5 rounded font-bold border border-white/10;
+  }
+}
+
+/* --- BOOT SEQUENCE ANIMATIONS --- */
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.animate-blink { animation: blink 1s step-end infinite; }
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+.scanlines::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 2;
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
+.scanlines::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: rgba(18, 16, 16, 0.1);
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+  animation: flicker 0.15s infinite;
 }

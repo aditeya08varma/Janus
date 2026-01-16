@@ -136,3 +136,53 @@ python backend/ingest.py
 ### Troubleshooting
 - **Telemetry Loss**: Usually caused by CORS mismatches or missing environment keys.
 - **Cache Misses**: Ensure `janus_cache.json` has write permissions in your hosting environment.
+
+graph LR
+    subgraph Frontend [React HUD]
+    UI[App.jsx]
+    HUD[Visual HUD Elements]
+    end
+
+    subgraph Backend [FastAPI Service]
+    API[api.py]
+    Cache[(LRU Cache)]
+    Graph[LangGraph Logic]
+    end
+
+    subgraph Memory [Cloud Services]
+    Munin[(Pinecone Vector DB)]
+    Hugin[DeepSeek-V3 LLM]
+    end
+
+    UI <--> API
+    API <--> Cache
+    API <--> Graph
+    Graph <--> Munin
+    Graph <--> Hugin
+    
+    style UI fill:#111418,stroke:#FF1E1E,color:#fff
+    style API fill:#111418,stroke:#FF1E1E,color:#fff
+    style Munin fill:#0055ff,stroke:#fff,color:#fff
+    style Hugin fill:#FF1E1E,stroke:#fff,color:#fff
+
+graph TD
+    Start((Driver Query)) --> Input[Semantic Translation]
+    Input --> Router{Intent?}
+    
+    Router -- 2026 Specific --> S1[Search: 2026 Namespace]
+    Router -- Comparison --> S2[Parallel Search: 2025 & 2026]
+    Router -- General --> S1
+    
+    S1 --> Check{Data Found?}
+    Check -- No --> Fallback[Continuity Protocol: Fallback to 2025]
+    Check -- Yes --> Final[TD Briefing Generation]
+    
+    Fallback --> S3[Search: 2025 Namespace]
+    S3 --> Final
+    S2 --> Final
+    
+    Final --> Briefing((Engineer Output))
+    
+    style Start fill:#FF1E1E,stroke:#fff,color:#fff
+    style Briefing fill:#FF1E1E,stroke:#fff,color:#fff
+    style Fallback fill:#f39c12,stroke:#fff,color:#fff

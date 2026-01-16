@@ -1,7 +1,6 @@
 import os
 import uvicorn
-import json
-import time
+import redis
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -11,26 +10,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-CACHE_FILE = "janus_cache.json"
-MAX_CACHE_SIZE = 100
-
-def load_cache():
-    if os.path.exists(CACHE_FILE):
-        try:
-            with open(CACHE_FILE, "r") as f:
-                return json.load(f)
-        except:
-            return {}
-    return {}
-
-def save_cache(cache_data):
-    if len(cache_data) > MAX_CACHE_SIZE:
-        oldest_key = min(cache_data, key=lambda k: cache_data[k]["timestamp"])
-        del cache_data[oldest_key]
-    with open(CACHE_FILE, "w") as f:
-        json.dump(cache_data, f, indent=4)
-
-janus_cache = load_cache()
+# --- CONFIGURATION ---
+# Connect to Redis. 
+redis_client = redis.from_url(
+    os.getenv("REDIS_URL"),
+    decode_responses=True
+)
 
 # Import your graph after env vars are loaded
 from graph import app as graph_app 
@@ -41,7 +26,7 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# --- UPDATED CORS FOR HOSTING ---
+# --- CORS FOR HOSTING ---
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 
 app.add_middleware(
@@ -55,8 +40,7 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
 
-from langchain_core.messages import SystemMessage
-
+# --- SYSTEM PROMPT ---
 SYSTEM_PROMPT = SystemMessage(content="""
     You are **Janus 2.0**, the F1 Technical Director and Transition Specialist. 
     You provide high-density, low-clutter technical briefings on the shift from the "Ground Effect Era" (2022-2025) to the "Nimble Car Era" (2026).
@@ -104,9 +88,16 @@ SYSTEM_PROMPT = SystemMessage(content="""
 
 @app.get("/status")
 async def get_status():
+    try:
+        redis_status = "CONNECTED" if redis_client.ping() else "ERROR"
+    except Exception as e:
+        redis_status = "OFFLINE"
+        print(f"Redis Error: {e}")
+
     return {
         "status": "ONLINE",
         "engine": "DeepSeek-Chat",
+        "memory": f"Redis ({redis_status})",
         "graph_state": "READY"
     }
 
@@ -114,31 +105,55 @@ async def get_status():
 async def chat_endpoint(request: ChatRequest):
     query = request.message.strip().lower()
     
-    if query in janus_cache:
-        janus_cache[query]["timestamp"] = time.time()
-        save_cache(janus_cache) 
-        async def cached_generator():
-            yield janus_cache[query]["response"]
-        return StreamingResponse(cached_generator(), media_type="text/plain")
+    # 1. READ FROM REDIS (The "Hit")
+    try:
+        cached_response = redis_client.get(query)
+        if cached_response:
+            print(f"⚡ CACHE HIT: {query}")
+            async def cached_generator():
+                yield cached_response
+            return StreamingResponse(cached_generator(), media_type="text/plain")
+    except Exception as e:
+        print(f"⚠️ Redis Read Error: {e}")
 
+    # 2. GENERATE & WRITE TO REDIS (The "Miss")
     async def event_generator():
         accumulated_response = ""
         inputs = {"messages": [SYSTEM_PROMPT, HumanMessage(content=request.message)]}
         
         async for chunk in graph_app.astream(inputs, stream_mode="updates"):
+            
+            # CASE A: Agent Thinking / Tool Calls
             if "agent" in chunk:
                 message = chunk["agent"]["messages"][-1]
-                if not message.tool_calls:
+                
+                # If Agent wants to call a Tool -> Send Log
+                if message.tool_calls:
+                    for tool in message.tool_calls:
+                        if tool['name'] == "search_knowledge_base":
+                            # We send __LOG__ prefix so frontend knows to render this in the green console
+                            yield f"__LOG__🔍 INSPECTING REGULATIONS: {tool['args'].get('target_year')} ERA\n"
+                            yield f"__LOG__📡 QUERY: '{tool['args'].get('query')}'\n"
+                        elif tool['name'] == "search_web":
+                            yield f"__LOG__🌐 SCANNING EXTERNAL FEED: '{tool['args'].get('query')}'\n"
+                
+                # If Agent has the Final Answer -> Send Content
+                elif message.content:
                     final_content = message.content
                     accumulated_response = final_content
                     yield final_content
 
+            # CASE B: Tool Execution Finished -> Send Log
+            elif "tools" in chunk:
+                 yield f"__LOG__✅ DATA SECURED. ANALYZING...\n"
+        
+        # Save ONLY the final clean text to Redis (not the logs)
         if accumulated_response:
-            janus_cache[query] = {
-                "response": accumulated_response,
-                "timestamp": time.time()
-            }
-            save_cache(janus_cache)
+            try:
+                redis_client.set(query, accumulated_response, ex=86400)
+                print(f"💾 CACHED: {query}")
+            except Exception as e:
+                print(f"⚠️ Redis Write Error: {e}")
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
