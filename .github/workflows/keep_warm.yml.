@@ -1,0 +1,11 @@
+name: Janus System Keep-Warm
+on:
+  schedule:
+    - cron: '*/14 * * * *'
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telemetry Ping
+        # Replace the URL with your actual Render backend URL
+        run: curl -I https://janus-backend.onrender.com/status
