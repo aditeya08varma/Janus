@@ -12,27 +12,31 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# --- REDIS CACHE KEY LOGIC ---
 def get_canonical_key(query: str):
     q = query.lower().strip()
-    # Era Partitioning
+    # Era Partitioning (Regex logic for isolation)
     year = "2026"
-    if re.search(r"2025|current|ground effect|25", q):
+    # If explicit mention of 2025/current, use 2025 bucket.
+    # Logic: "2025" exists AND "2026" does NOT exist -> 2025.
+    # Otherwise default to 2026 (handles "Compare 2025 and 2026" safely)
+    if "2025" in q and "2026" not in q:
         year = "2025"
-    elif re.search(r"2026|future|nimble|26", q):
-        year = "2026"
-    # Semantic Normalization (Mappings from concepts.txt)
+    elif re.search(r"current|ground effect|25", q) and not re.search(r"2026|future|nimble|26", q):
+        year = "2025"
+        
+    # Semantic Normalization
     q = q.replace("weight", "mass").replace("engine", "power unit").replace("drs", "active aero")
     intent_hash = hashlib.md5(q.encode()).hexdigest()
     return f"janus:{year}:{intent_hash}"
 
 # --- CONFIGURATION ---
-# Connect to Redis. 
 redis_client = redis.from_url(
     os.getenv("REDIS_URL"),
     decode_responses=True
 )
 
-# Import your graph after env vars are loaded
+# Import the graph (Ensure graph.py has the MemorySaver fix applied!)
 from graph import app as graph_app 
 
 app = FastAPI(
@@ -41,7 +45,7 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# --- CORS FOR HOSTING ---
+# --- CORS ---
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 
 app.add_middleware(
@@ -52,53 +56,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- UPDATED REQUEST MODEL (MULTI-USER SUPPORT) ---
 class ChatRequest(BaseModel):
     message: str
+    # Frontend sends a UUID here. If missing, defaults to "demo" (Single User fallback)
+    session_id: str = "demo_global_session"
 
-# --- SYSTEM PROMPT ---
+# --- SYSTEM PROMPT (Can be injected into graph state or passed here) ---
 SYSTEM_PROMPT = SystemMessage(content="""
-    You are **Janus 2.0**, the F1 Technical Director and Transition Specialist. 
-    You provide high-density, low-clutter technical briefings on the shift from the "Ground Effect Era" (2022-2025) to the "Nimble Car Era" (2026).
-                              
-    ### 🛡️ DYNAMIC TRUTH PROTOCOL (No Hardcoding)
-    1. **DEFAULT TO 2026:** Unless a specific year is mentioned, always prioritize the 2026 "Nimble Car" regulations.
-    2. **LATEST ISSUE SUPREMACY:** - You will encounter overlapping documents for 2026 (e.g., Issue 8, Issue 15).
-       - **The Rule:** Always treat the highest "Issue" number as the finalized truth. 
-       - **Validation:** If `Issue 15` contradicts a lower issue, you must report the `Issue 15` value and cite it as the "Finalized December 2025 Specification."
-    3. **SECTIONAL HIERARCHY:** - Technical specs (Mass, Aero, Engine) reside in **Section C**. 
-       - Sporting procedures (Overtake Mode activation) reside in **Section B**.
-
-    ### 🏎️ RESEARCH & FALLBACK ALGORITHM
-    - **STEP 1 (The Target):** Search the specific year requested.
-    - **STEP 2 (Continuity):** If a detail is missing in 2026, state: "The 2026 regulations are silent on this; falling back to 2025 continuity." Then, execute a tool call for the previous year.
-    - **STEP 3 (Comparison):** When asked to compare eras, you MUST call 'search_knowledge_base' twice—once per year—to prevent "Data Bleed" between eras.
-
-    ### 🛠️ SEMANTIC TRANSLATION (Cheat Sheet Usage)
-    Use your internal mapping to bridge user jargon to official FIA terms:
-    - User says "DRS" (2026) -> You search "Active Aero" or "Straight Mode".
-    - User says "Engine" -> You search "Power Unit" or "ICE".
-    - User says "Overtake Button" -> You search "Overtake Mode" or "Manual Override".
-
-    Always prioritize the following "Simplified Names" over early draft terminology:
-    - "Manual Override Mode" (MOM) -> REBRANDED TO: **Overtake Mode**
-    - "Manual ERS Deployment" -> REBRANDED TO: **Boost Mode**
-    - "X-Mode" / "Straight-Line Mode" -> REBRANDED TO: **Active Aero (Straight)**
-    - "Z-Mode" / "Cornering Mode" -> REBRANDED TO: **Active Aero (Corner)**
-    - "Harvesting" / "Regen" -> REBRANDED TO: **Recharge**
-                              
-    ### 📊 DATA VISUALIZATION & STRUCTURE (DE-CLUTTER RULES)
-    1. **NO PROSE WALLS:** Avoid long paragraphs. Use concise, punchy technical sentences.
-    2. **MANDATORY TABLES:** Any comparison or list of more than 3 technical specs MUST be rendered in a Markdown table.
-    3. **THE VERDICT:** Conclude every response with a bolded, one-sentence "TECHNICAL DIRECTOR’S VERDICT" providing strategic advice.
-    4. **CITE EXACTLY:** Every fact must follow: [Source: Issue XX | Article: X.Y | Year: 20XX].
-
-    ### ⚠️ HALLUCINATION GUARDRAILS
-    - **Never invent a trend.** If a spec is not in the retrieved documents, state: "I cannot confirm this value in the current finalized manifest."
-    - **Cite exactly.** Every fact must be followed by: [Source: Issue XX | Article: X.Y | Year: 20XX].
-
-    ### FORMATTING
-    - **Tone:** Technical Director. Precise, data-heavy, and authoritative.
-    - **Output:** Use Markdown tables for any comparison between 2025 and 2026 specs.
+    You are **Janus 2.0**, the F1 Technical Director.
+    
+    ### TRUTH PROTOCOL
+    1. **DEFAULT TO 2026:** Prioritize "Nimble Car" regs unless told otherwise.
+    2. **STRICT ISOLATION:** If asked about 2025, do NOT mix in 2026 rules unless comparing.
+    3. **VISUALS:** Use Markdown tables for comparisons.
+    
+    ### FALLBACK LOGIC
+    - Search current year first. If silent, check previous year for continuity.
+    - Cite sources: [Source: Issue XX | Year: 20XX].
+    
+    ### WARNINGS
+    - If you see [[⚠️ OBSOLETE DRAFT]], warn the user heavily.
 """)
 
 @app.get("/status")
@@ -107,18 +85,20 @@ async def get_status():
         redis_status = "CONNECTED" if redis_client.ping() else "ERROR"
     except Exception as e:
         redis_status = "OFFLINE"
-        print(f"Redis Error: {e}")
-
     return {
         "status": "ONLINE",
         "engine": "DeepSeek-Chat",
         "memory": f"Redis ({redis_status})",
-        "graph_state": "READY"
+        "mode": "STATEFUL (MemorySaver Active)"
     }
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
-    # USE THE PARTITIONED KEY
+    # 1. CACHE CHECK (The "Fast Path")
+    # We still cache based on the QUERY, not the session. 
+    # Logic: "What is the weight" is the same answer for everyone.
+    # Note: Complex follow-ups ("And for the engine?") won't hit this cache 
+    # because they are unique strings. This is expected behavior.
     target_key = get_canonical_key(request.message)
     
     try:
@@ -131,82 +111,46 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as e:
         print(f"⚠️ Redis Error: {e}")
 
+    # 2. GRAPH EXECUTION (The "Smart Path")
     async def event_generator():
         accumulated_response = ""
+        
+        # --- MULTI-USER CONFIGURATION ---
+        # This tells LangGraph to load the specific history for THIS session_id
+        config = {"configurable": {"thread_id": request.session_id}}
+        
+        # We only pass the NEW message. LangGraph retrieves history from MemorySaver.
+        # We also pass SystemPrompt as a distinct message to ensure it persists/refreshes.
         inputs = {"messages": [SYSTEM_PROMPT, HumanMessage(content=request.message)]}
-        async for chunk in graph_app.astream(inputs, stream_mode="updates"):
+        
+        # Pass 'config' to astream to enable Memory
+        async for chunk in graph_app.astream(inputs, config=config, stream_mode="updates"):
+            
             if "agent" in chunk:
                 message = chunk["agent"]["messages"][-1]
+                
+                # CASE A: Tool Calls (Send Logs)
                 if message.tool_calls:
                     for tool in message.tool_calls:
                         if tool['name'] == "search_knowledge_base":
-                            yield f"__LOG__🔍 INSPECTING REGULATIONS: {tool['args'].get('target_year')} ERA\\n"
-                            yield f"__LOG__📡 QUERY: '{tool['args'].get('query')}'\\n"
+                            # Send special log line for Frontend HUD
+                            yield f"__LOG__🔍 INSPECTING REGULATIONS: {tool['args'].get('target_year')} ERA\n"
+                            yield f"__LOG__📡 QUERY: '{tool['args'].get('query')}'\n"
+                
+                # CASE B: Final Answer (Send Content)
                 elif message.content:
                     accumulated_response = message.content
                     yield message.content
+
+            # CASE C: Tool Execution Updates
             elif "tools" in chunk:
-                 yield f"__LOG__✅ DATA SECURED. ANALYZING...\\n"
+                 yield f"__LOG__✅ DATA SECURED. ANALYZING...\n"
         
-        if accumulated_response:
-            redis_client.set(target_key, accumulated_response, ex=86400)
+        # Cache the final result (if it wasn't a conversation fragment)
+        if accumulated_response and len(accumulated_response) > 20:
+             redis_client.set(target_key, accumulated_response, ex=86400)
 
     return StreamingResponse(event_generator(), media_type="text/plain")
-# @app.post("/chat")
-# async def chat_endpoint(request: ChatRequest):
-#     query = request.message.strip().lower()
-    
-#     # 1. READ FROM REDIS (The "Hit")
-#     try:
-#         cached_response = redis_client.get(query)
-#         if cached_response:
-#             print(f"⚡ CACHE HIT: {query}")
-#             async def cached_generator():
-#                 yield cached_response
-#             return StreamingResponse(cached_generator(), media_type="text/plain")
-#     except Exception as e:
-#         print(f"⚠️ Redis Read Error: {e}")
-
-#     # 2. GENERATE & WRITE TO REDIS (The "Miss")
-#     async def event_generator():
-#         accumulated_response = ""
-#         inputs = {"messages": [SYSTEM_PROMPT, HumanMessage(content=request.message)]}
-        
-#         async for chunk in graph_app.astream(inputs, stream_mode="updates"):
-            
-#             # CASE A: Agent Thinking / Tool Calls
-#             if "agent" in chunk:
-#                 message = chunk["agent"]["messages"][-1]
-                
-#                 # If Agent wants to call a Tool -> Send Log
-#                 if message.tool_calls:
-#                     for tool in message.tool_calls:
-#                         if tool['name'] == "search_knowledge_base":
-#                             # We send __LOG__ prefix so frontend knows to render this in the green console
-#                             yield f"__LOG__🔍 INSPECTING REGULATIONS: {tool['args'].get('target_year')} ERA\n"
-#                             yield f"__LOG__📡 QUERY: '{tool['args'].get('query')}'\n"
-#                         elif tool['name'] == "search_web":
-#                             yield f"__LOG__🌐 SCANNING EXTERNAL FEED: '{tool['args'].get('query')}'\n"
-                
-#                 # If Agent has the Final Answer -> Send Content
-#                 elif message.content:
-#                     final_content = message.content
-#                     accumulated_response = final_content
-#                     yield final_content
-
-#             # CASE B: Tool Execution Finished -> Send Log
-#             elif "tools" in chunk:
-#                  yield f"__LOG__✅ DATA SECURED. ANALYZING...\n"
-        
-#         # Save ONLY the final clean text to Redis (not the logs)
-#         if accumulated_response:
-#             try:
-#                 redis_client.set(query, accumulated_response, ex=86400)
-#                 print(f"💾 CACHED: {query}")
-#             except Exception as e:
-#                 print(f"⚠️ Redis Write Error: {e}")
-
-#     return StreamingResponse(event_generator(), media_type="text/plain")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
