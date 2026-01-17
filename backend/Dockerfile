@@ -18,8 +18,5 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # 6. Copy the rest of the backend code
 COPY . .
 
-# 7. Expose the API Port
-EXPOSE 8000
-
 # 8. Start the Application
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD uvicorn api:app --host 0.0.0.0 --port $PORT
