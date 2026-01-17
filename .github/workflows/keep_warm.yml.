@@ -7,5 +7,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send Telemetry Ping
-        # Replace the URL with your actual Render backend URL
         run: curl -I https://janus-backend-emgn.onrender.com/status
