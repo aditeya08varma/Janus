@@ -39,78 +39,82 @@ class SearchInput(BaseModel):
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], operator.add]
 
-# @tool("search_knowledge_base", args_schema=SearchInput)
-# def search_knowledge_base(query: str):
-#     """
-#     Useful for technical questions about F1 Regulations (Aero, Engine, Weight).
-#     """
-#     print(f" ACCESSING MUNIN: Searching for '{query}' ")
-#     try:
-#         results = vectorstore.similarity_search(query, k=6)
-#         if not results:
-#             return "No relevant regulations found."
-        
-#         context = ""
-#         for doc in results:
-#             source = doc.metadata.get('source', 'Unknown')
-#             year = doc.metadata.get('year', 'Unknown')
-#             era = doc.metadata.get('era', 'Unknown') 
-#             context += f"[Source: {source} | Year: {year} | Era: {era}]\n{doc.page_content}\n\n"
-#         return context
-#     except Exception as e:
-#         return f"Error accessing knowledge base: {str(e)}"
-
-
 @tool("search_knowledge_base", args_schema=SearchInput)
 def search_knowledge_base(query: str, target_year: int = 2026):
-    """
-    Directly accesses official FIA F1 Regulations (Technical, Sporting, Operational).
-    Uses a hierarchical fallback: checks the requested year first, then falls back 
-    to previous years (2025, 2024, etc.) to ensure continuity of data.
-    """
-    print(f" ACCESSING MUNIN: Searching for '{query}' starting in {target_year}")
-    
-    # 1. Define the search order (e.g., 2026 -> 2025 -> 2024 -> 2023 -> 2022)
+    """Accesses official FIA F1 Regulations with Priority-Gated Fallback."""
     search_years = list(range(target_year, 2021, -1))
     accumulated_context = ""
     
-    try:
-        for year in search_years:
-            # Metadata filter forces Pinecone to only look at this specific year
-            results = vectorstore.similarity_search(
-                query, 
-                k=4, 
-                filter={"year": year}
-            )
+    for year in search_years:
+        results = vectorstore.similarity_search(query, k=4, filter={"year": year})
+        
+        if results:
+            for doc in results:
+                priority = doc.metadata.get('priority', 2)
+                accumulated_context += (
+                    f"--- REGULATION SEGMENT ---\n"
+                    f"SOURCE: {doc.metadata.get('source')} | YEAR: {year} | PRIORITY: {priority}\n"
+                    f"CONTENT: {doc.page_content}\n\n"
+                )
             
-            if results:
-                for doc in results:
-                    source = doc.metadata.get('source', 'Unknown')
-                    priority = doc.metadata.get('priority', 2)
-                    section = doc.metadata.get('section', 'Unknown')
+            # THE FIX: Only stop if Finalized truth (Priority 1) is found
+            if any(res.metadata.get('priority') == 1 for res in results):
+                print(f"✅ FINALIZED DATA FOUND FOR {year}. TERMINATING SEARCH.")
+                break
+            else:
+                print(f"⚠️ Draft found for {year}. Continuing continuity fallback...")
+
+    return accumulated_context or "No relevant regulations found."
+# @tool("search_knowledge_base", args_schema=SearchInput)
+# def search_knowledge_base(query: str, target_year: int = 2026):
+#     """
+#     Directly accesses official FIA F1 Regulations (Technical, Sporting, Operational).
+#     Uses a hierarchical fallback: checks the requested year first, then falls back 
+#     to previous years (2025, 2024, etc.) to ensure continuity of data.
+#     """
+#     print(f" ACCESSING MUNIN: Searching for '{query}' starting in {target_year}")
+    
+#     # 1. Define the search order (e.g., 2026 -> 2025 -> 2024 -> 2023 -> 2022)
+#     search_years = list(range(target_year, 2021, -1))
+#     accumulated_context = ""
+    
+#     try:
+#         for year in search_years:
+#             # Metadata filter forces Pinecone to only look at this specific year
+#             results = vectorstore.similarity_search(
+#                 query, 
+#                 k=4, 
+#                 filter={"year": year}
+#             )
+            
+#             if results:
+#                 for doc in results:
+#                     source = doc.metadata.get('source', 'Unknown')
+#                     priority = doc.metadata.get('priority', 2)
+#                     section = doc.metadata.get('section', 'Unknown')
                     
-                    # Format for the LLM to easily parse
-                    accumulated_context += (
-                        f"--- REGULATION SEGMENT ---\n"
-                        f"SOURCE: {source}\n"
-                        f"YEAR: {year}\n"
-                        f"SECTION: {section}\n"
-                        f"PRIORITY: {'FINALIZED' if priority == 1 else 'DRAFT/ARCHIVE'}\n"
-                        f"CONTENT: {doc.page_content}\n\n"
-                    )
+#                     # Format for the LLM to easily parse
+#                     accumulated_context += (
+#                         f"--- REGULATION SEGMENT ---\n"
+#                         f"SOURCE: {source}\n"
+#                         f"YEAR: {year}\n"
+#                         f"SECTION: {section}\n"
+#                         f"PRIORITY: {'FINALIZED' if priority == 1 else 'DRAFT/ARCHIVE'}\n"
+#                         f"CONTENT: {doc.page_content}\n\n"
+#                     )
                 
-                # If we found a finalized Priority 1 document for the year, 
-                # we stop the loop to prevent "Data Bleed" from older eras.
-                if any(res.metadata.get('priority') == 1 for res in results):
-                    break
+#                 # If we found a finalized Priority 1 document for the year, 
+#                 # we stop the loop to prevent "Data Bleed" from older eras.
+#                 if any(res.metadata.get('priority') == 1 for res in results):
+#                     break
 
-        if not accumulated_context:
-            return "RESULT: No relevant regulations found. The requested spec may have been renamed or removed."
+#         if not accumulated_context:
+#             return "RESULT: No relevant regulations found. The requested spec may have been renamed or removed."
 
-        return accumulated_context
+#         return accumulated_context
 
-    except Exception as e:
-        return f"CRITICAL ERROR: Knowledge base access failed: {str(e)}"
+#     except Exception as e:
+#         return f"CRITICAL ERROR: Knowledge base access failed: {str(e)}"
 
 # Update your tools list
 

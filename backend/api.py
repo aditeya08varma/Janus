@@ -1,6 +1,8 @@
 import os
 import uvicorn
 import redis
+import re
+import hashlib
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -9,6 +11,19 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from dotenv import load_dotenv
 
 load_dotenv()
+
+def get_canonical_key(query: str):
+    q = query.lower().strip()
+    # Era Partitioning
+    year = "2026"
+    if re.search(r"2025|current|ground effect|25", q):
+        year = "2025"
+    elif re.search(r"2026|future|nimble|26", q):
+        year = "2026"
+    # Semantic Normalization (Mappings from concepts.txt)
+    q = q.replace("weight", "mass").replace("engine", "power unit").replace("drs", "active aero")
+    intent_hash = hashlib.md5(q.encode()).hexdigest()
+    return f"janus:{year}:{intent_hash}"
 
 # --- CONFIGURATION ---
 # Connect to Redis. 
@@ -103,59 +118,95 @@ async def get_status():
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
-    query = request.message.strip().lower()
+    # USE THE PARTITIONED KEY
+    target_key = get_canonical_key(request.message)
     
-    # 1. READ FROM REDIS (The "Hit")
     try:
-        cached_response = redis_client.get(query)
+        cached_response = redis_client.get(target_key)
         if cached_response:
-            print(f"⚡ CACHE HIT: {query}")
+            print(f"⚡ CACHE HIT: {target_key}")
             async def cached_generator():
                 yield cached_response
             return StreamingResponse(cached_generator(), media_type="text/plain")
     except Exception as e:
-        print(f"⚠️ Redis Read Error: {e}")
+        print(f"⚠️ Redis Error: {e}")
 
-    # 2. GENERATE & WRITE TO REDIS (The "Miss")
     async def event_generator():
         accumulated_response = ""
         inputs = {"messages": [SYSTEM_PROMPT, HumanMessage(content=request.message)]}
-        
         async for chunk in graph_app.astream(inputs, stream_mode="updates"):
-            
-            # CASE A: Agent Thinking / Tool Calls
             if "agent" in chunk:
                 message = chunk["agent"]["messages"][-1]
-                
-                # If Agent wants to call a Tool -> Send Log
                 if message.tool_calls:
                     for tool in message.tool_calls:
                         if tool['name'] == "search_knowledge_base":
-                            # We send __LOG__ prefix so frontend knows to render this in the green console
-                            yield f"__LOG__🔍 INSPECTING REGULATIONS: {tool['args'].get('target_year')} ERA\n"
-                            yield f"__LOG__📡 QUERY: '{tool['args'].get('query')}'\n"
-                        elif tool['name'] == "search_web":
-                            yield f"__LOG__🌐 SCANNING EXTERNAL FEED: '{tool['args'].get('query')}'\n"
-                
-                # If Agent has the Final Answer -> Send Content
+                            yield f"__LOG__🔍 INSPECTING REGULATIONS: {tool['args'].get('target_year')} ERA\\n"
+                            yield f"__LOG__📡 QUERY: '{tool['args'].get('query')}'\\n"
                 elif message.content:
-                    final_content = message.content
-                    accumulated_response = final_content
-                    yield final_content
-
-            # CASE B: Tool Execution Finished -> Send Log
+                    accumulated_response = message.content
+                    yield message.content
             elif "tools" in chunk:
-                 yield f"__LOG__✅ DATA SECURED. ANALYZING...\n"
+                 yield f"__LOG__✅ DATA SECURED. ANALYZING...\\n"
         
-        # Save ONLY the final clean text to Redis (not the logs)
         if accumulated_response:
-            try:
-                redis_client.set(query, accumulated_response, ex=86400)
-                print(f"💾 CACHED: {query}")
-            except Exception as e:
-                print(f"⚠️ Redis Write Error: {e}")
+            redis_client.set(target_key, accumulated_response, ex=86400)
 
     return StreamingResponse(event_generator(), media_type="text/plain")
+# @app.post("/chat")
+# async def chat_endpoint(request: ChatRequest):
+#     query = request.message.strip().lower()
+    
+#     # 1. READ FROM REDIS (The "Hit")
+#     try:
+#         cached_response = redis_client.get(query)
+#         if cached_response:
+#             print(f"⚡ CACHE HIT: {query}")
+#             async def cached_generator():
+#                 yield cached_response
+#             return StreamingResponse(cached_generator(), media_type="text/plain")
+#     except Exception as e:
+#         print(f"⚠️ Redis Read Error: {e}")
+
+#     # 2. GENERATE & WRITE TO REDIS (The "Miss")
+#     async def event_generator():
+#         accumulated_response = ""
+#         inputs = {"messages": [SYSTEM_PROMPT, HumanMessage(content=request.message)]}
+        
+#         async for chunk in graph_app.astream(inputs, stream_mode="updates"):
+            
+#             # CASE A: Agent Thinking / Tool Calls
+#             if "agent" in chunk:
+#                 message = chunk["agent"]["messages"][-1]
+                
+#                 # If Agent wants to call a Tool -> Send Log
+#                 if message.tool_calls:
+#                     for tool in message.tool_calls:
+#                         if tool['name'] == "search_knowledge_base":
+#                             # We send __LOG__ prefix so frontend knows to render this in the green console
+#                             yield f"__LOG__🔍 INSPECTING REGULATIONS: {tool['args'].get('target_year')} ERA\n"
+#                             yield f"__LOG__📡 QUERY: '{tool['args'].get('query')}'\n"
+#                         elif tool['name'] == "search_web":
+#                             yield f"__LOG__🌐 SCANNING EXTERNAL FEED: '{tool['args'].get('query')}'\n"
+                
+#                 # If Agent has the Final Answer -> Send Content
+#                 elif message.content:
+#                     final_content = message.content
+#                     accumulated_response = final_content
+#                     yield final_content
+
+#             # CASE B: Tool Execution Finished -> Send Log
+#             elif "tools" in chunk:
+#                  yield f"__LOG__✅ DATA SECURED. ANALYZING...\n"
+        
+#         # Save ONLY the final clean text to Redis (not the logs)
+#         if accumulated_response:
+#             try:
+#                 redis_client.set(query, accumulated_response, ex=86400)
+#                 print(f"💾 CACHED: {query}")
+#             except Exception as e:
+#                 print(f"⚠️ Redis Write Error: {e}")
+
+#     return StreamingResponse(event_generator(), media_type="text/plain")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
