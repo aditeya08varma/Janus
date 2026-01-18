@@ -24,6 +24,14 @@ docs/
 *.pdf
 README.md
 
+# --- MAC OS JUNK ---
+.DS_Store
+
+# --- DOCKER ARTIFACTS ---
+# No need to copy the build instructions into the build itself
+Dockerfile
+.dockerignore
+
 # --- FRONTEND (Safety check: ignore if accidentally copied) ---
 node_modules/
 frontend/
