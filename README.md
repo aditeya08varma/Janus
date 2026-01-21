@@ -1,6 +1,6 @@
 # 🏎️ Janus 2.0: F1 Technical Regulation Intelligence
 
-**Status**: 🟢 Production / Live  
+**Status**: 🟢 Production / Live : https://janus-frontend-ncie.onrender.com/
 **Engine**: DeepSeek-V3 (Hugin)  
 **Memory**: Pinecone Vector DB (Munin)  
 **Cache**: Redis High-Speed Key-Value
