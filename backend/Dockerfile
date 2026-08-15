@@ -21,10 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 6. PRE-BAKE THE BRAIN (The "Pro" Move)
-# This downloads the embedding model during the build phase.
-# If you didn't do this, your first user request would timeout while waiting for the download.
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+# Pre-bake embedding + reranker models using the same constants as ingest/query.
+COPY config.py .
+RUN python -c "from config import EMBEDDING_MODEL, RERANKER_MODEL; from sentence_transformers import SentenceTransformer, CrossEncoder; SentenceTransformer(EMBEDDING_MODEL); CrossEncoder(RERANKER_MODEL)"
 
 # 7. Copy the rest of the backend code
 COPY . .

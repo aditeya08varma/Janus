@@ -7,6 +7,7 @@ from ragas.metrics import faithfulness, answer_relevancy, context_precision
 from langchain_deepseek import ChatDeepSeek
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.messages import HumanMessage
+from config import EMBEDDING_MODEL
 from graph import graph_builder
 from dotenv import load_dotenv
 
@@ -21,7 +22,7 @@ judge_llm = ChatDeepSeek(
 )
 
 # 2. Setup the Embeddings (Must match what you used for Pinecone)
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 
 async def run_janus_with_tracing(question: str):
     """

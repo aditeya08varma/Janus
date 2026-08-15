@@ -4,14 +4,34 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-// --- SESSION MANAGEMENT ---
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_KEY = import.meta.env.VITE_JANUS_API_KEY;
+const SESSION_KEY = "janus_session_id";
+const MESSAGES_KEY = "janus_messages";
+
+const authHeaders = () => {
+  const headers = { "Content-Type": "application/json" };
+  if (API_KEY) headers["X-API-Key"] = API_KEY;
+  return headers;
+};
+
 const getSessionId = () => {
-  let id = sessionStorage.getItem("janus_session_id");
+  let id = localStorage.getItem(SESSION_KEY);
   if (!id) {
-    id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    sessionStorage.setItem("janus_session_id", id);
+    id = (crypto.randomUUID && crypto.randomUUID()) || `user_${Date.now()}`;
+    localStorage.setItem(SESSION_KEY, id);
   }
   return id;
+};
+
+const loadCachedMessages = () => {
+  try {
+    const raw = localStorage.getItem(MESSAGES_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw).map((m) => ({ ...m, isStreaming: false }));
+  } catch {
+    return [];
+  }
 };
 
 // --- CUSTOM COMPONENTS ---
@@ -146,11 +166,28 @@ const TelemetryLoader = () => (
 
 function App() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(loadCachedMessages);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const scrollRef = useRef(null);
+
+  useEffect(() => {
+    const persistable = messages.map((m) => ({ ...m, isStreaming: false }));
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify(persistable));
+  }, [messages]);
+
+  useEffect(() => {
+    const sessionId = getSessionId();
+    fetch(`${API_BASE_URL}/history/${sessionId}`, { headers: authHeaders() })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.messages?.length) {
+          setMessages(data.messages.map((m) => ({ ...m, isStreaming: false })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // REUSABLE SCROLL LOGIC
   const scrollToBottom = (behavior = "smooth") => {
@@ -175,7 +212,6 @@ function App() {
   const copyToClipboard = (text) => navigator.clipboard.writeText(text);
 
   const sendMessage = async (overrideInput = null) => {
-    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
     const textToSend = overrideInput || input;
     if (!textToSend.trim()) return;
 
@@ -196,9 +232,13 @@ function App() {
       const sessionId = getSessionId();
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ message: textToSend, session_id: sessionId }),
       });
+
+      if (!response.ok || !response.body) {
+        throw new Error(`Uplink rejected (${response.status})`);
+      }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -301,7 +341,7 @@ function App() {
                 </div>
                 
                 <div className={`max-w-[95%] md:max-w-[85%] p-5 md:p-8 rounded-3xl border transition-all duration-500 ${m.role === 'user' ? 'bg-white/[0.02] border-white/10 rounded-tr-none text-right shadow-xl' : 'bg-[#111418]/80 border-white/10 rounded-tl-none shadow-[0_0_60px_rgba(0,0,0,0.2)] text-left backdrop-blur-md'}`}>
-                  {!m.isUser && !content.trim() && <TelemetryConsole logs={logs} isStreaming={m.isStreaming} />}
+                  {m.role === 'bot' && logs.length > 0 && <TelemetryConsole logs={logs} isStreaming={m.isStreaming} />}
                   {content && <TypewriterBlock content={content} isStreaming={m.isStreaming} />}
                 </div>
               </div>
