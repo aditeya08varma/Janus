@@ -1,0 +1,117 @@
+question,generated_answer,ground_truth,grade
+Is the MGU-H allowed in the 2026 Power Unit regulations?,"Based on my research through both the official FIA regulations database and web searches, I can now provide a definitive answer:
+
+**No, the MGU-H (Motor Generator Unit - Heat) is NOT allowed in the 2026 Power Unit regulations.**
+
+Here's what the research shows:
+
+## Key Findings:
+
+1. **MGU-H Removal**: The 2026 F1 power unit regulations have removed the MGU-H entirely from the specification. This is a major change from the 2014-2025 regulations where the MGU-H was a key component of the hybrid system.
+
+2. **Regulatory Evidence**: 
+   - The 2026 technical regulations (2026_regs_tech_iss15.pdf) only define and regulate the **MGU-K** (Motor Generator Unit - Kinetic)
+   - The 2025 regulations (2025_regs_tech_iss03.pdf) contain detailed definitions and regulations for both MGU-H and MGU-K
+   - The 2026 regulations reference only MGU-K in power unit element lists and technical specifications
+
+3. **Technical Changes**:
+   - **MGU-K Power Increase**: The MGU-K output increases dramatically from 120kW (160 bhp) to 350kW (470 bhp)
+   - **50/50 Power Split**: The 2026 power units will deliver a 50/50 split between internal combustion engine power and electric power
+   - **Simplified Hybrid System**: Removal of the complex and expensive MGU-H system
+
+4. **Reasons for Removal**:
+   - **Cost Reduction**: The MGU-H was expensive and complex to develop and manufacture
+   - **Road Relevance**: The technology lacked direct road car application
+   - **Weight Reduction**: Removing the MGU-H helps reduce overall car weight
+   - **Simplification**: Makes the power units more accessible to new manufacturers
+
+5. **What Remains**:
+   - 1.6-liter turbocharged V6 internal combustion engine (with some modifications)
+   - Enhanced MGU-K with significantly more power
+   - Energy Store (battery) system
+   - Advanced Sustainable Fuels requirement
+
+The removal of the MGU-H represents one of the most significant changes in the 2026 power unit regulations, marking the end of a technology that had been part of F1 since the introduction of the current hybrid era in 2014.",No. The MGU-H (Motor Generator Unit - Heat) has been removed from the 2026 regulations to reduce costs and complexity.,PASS
+What are the two modes of the Active Aerodynamics system in 2026?,"Based on the information from the F1 regulations, I can now provide a clear answer about the two modes of the Active Aerodynamics system in 2026.
+
+According to the 2026 F1 Technical Regulations, the Active Aerodynamics system (also referred to as ""Driver Adjustable Bodywork"") has **two distinct modes**:
+
+1. **Corner Mode** - This is the high-incidence position that provides maximum downforce for cornering. In this mode:
+   - The Front Wing Profiles are in their high-incidence design position
+   - The Rear Wing (RW) Flap is in its high-incidence design position
+   - This configuration maximizes aerodynamic downforce for cornering grip
+
+2. **Straight-Line Mode** - This is the low-incidence position that reduces drag for straight-line speed. In this mode:
+   - The Front Wing Profiles are in their low-incidence position (decreased incidence compared to Corner Mode)
+   - The Rear Wing Flap is in its low-incidence position (decreased incidence compared to Corner Mode)
+   - This configuration reduces aerodynamic drag for higher straight-line speeds
+
+The regulations specify that:
+- The system must switch between these two fixed positions only
+- The transition time between modes cannot exceed 400ms
+- The system is controlled by the FIA Standard ECU
+- The magnitude of incidence decrease from Corner Mode to Straight-Line Mode must always remain identical
+
+Additionally, the Sporting Regulations mention that there can be a ""partially activated"" state where the front wing is in Straight-Line Mode but the rear wing remains in Corner Mode, but the two primary modes are Corner Mode and Straight-Line Mode.",The two modes are Z-Mode (High Downforce) for corners and X-Mode (Low Drag) for straights.,FAIL
+What is the maximum energy flow rate allowed for the 2026 Power Unit?,"Based on the official 2026 F1 regulations, I can provide you with the maximum energy flow rate information for the 2026 Power Unit:
+
+## Maximum Energy Flow Rate for 2026 F1 Power Unit
+
+According to the **2026 Formula 1 Technical Regulations (Issue 15, December 2025)**, the key energy flow limits are:
+
+### **1. Maximum Electrical Power (ERS-K):**
+- **350 kW** (Article C5.2.7) - This is the absolute maximum electrical DC power of the ERS-K (Energy Recovery System - Kinetic)
+
+### **2. Fuel Energy Flow Limits:**
+- **Maximum fuel energy flow: 3,000 MJ/h** (Article C5.2.3)
+- Below 10,500 rpm, the fuel energy flow must not exceed: **EF (MJ/h) = 0.27 × N(rpm) + 165**
+
+### **3. Energy Storage and Transfer Limits:**
+- **Maximum delta State of Charge (SoC): 4 MJ** (Article C5.2.9)
+- **Maximum energy per lap from CU-K HV DC Bus: up to 9 MJ** (Article C5.2.10)
+
+### **4. Additional Power Delivery Constraints:**
+The electrical DC power of the ERS-K used to propel the car may not exceed:
+- **P(kW) = 1800 - 5 × car speed (kph)** when car speed is below 340 kph
+- **P(kW) = 6900 - 20 × car speed (kph)** when car speed is between 340-345 kph
+
+### **Summary:**
+The **maximum energy flow rate** for the 2026 Power Unit is governed by:
+- **Electrical power: 350 kW maximum** from the ERS-K
+- **Fuel energy flow: 3,000 MJ/h maximum** (approximately 833.3 kW equivalent)
+- **Total power output** combines both the internal combustion engine and electrical systems
+
+These regulations represent a significant change from previous years, with increased electrical power contribution and new energy management strategies for the 2026 season.","The fuel flow limit is energy-based, capped at 3000 MJ/h (Mega Joules per hour).",FAIL
+How much power can the MGU-K deploy in 2026?,"Based on my research, I can now provide you with a comprehensive answer about the MGU-K power deployment for the 2026 Formula 1 season:
+
+## MGU-K Power Deployment for 2026 Formula 1
+
+For the 2026 Formula 1 season, the MGU-K (Motor Generator Unit - Kinetic) will have a **maximum power output of 350 kW (approximately 469 horsepower)**.
+
+### Key Details:
+
+1. **Significant Power Increase**: This represents nearly a **300% increase** from the current 120 kW (161 hp) MGU-K power output used in the 2022-2025 regulations.
+
+2. **Power Distribution**: The 2026 power unit regulations introduce a rebalanced power distribution where:
+   - **Internal Combustion Engine (ICE)**: 400 kW
+   - **MGU-K**: 350 kW
+   - **Total Combined Power**: 750 kW (approximately 1,005 horsepower)
+
+3. **Simplified Hybrid System**: The 2026 regulations eliminate the MGU-H (Motor Generator Unit - Heat) entirely, making the MGU-K the sole electrical component in the hybrid system.
+
+4. **Torque Limit**: According to the FIA regulations, the MGU-K mechanical torque magnitude may not exceed **500 Nm** (referenced to crankshaft speed).
+
+5. **Power Deployment Strategy**: The MGU-K will deploy its maximum 350 kW power up to 290 kph (180 mph). Above this speed, there is a regulatory drop in maximum MGU-K power, though ""Overtake Mode"" can override this limitation.
+
+6. **Energy Recovery**: The increased MGU-K power means significantly enhanced regenerative braking capabilities, with the system playing a much larger role in both acceleration and energy recovery during braking.
+
+This substantial increase in MGU-K power is part of Formula 1's move toward more sustainable racing while maintaining performance, with the electrical component providing nearly half of the total power output and playing a crucial role in overtaking and straight-line speed.",The MGU-K electrical power output has been increased to 350 kW (approximately 470 bhp).,PASS
+Who is the current F1 tire supplier for 2026?,"Based on the search results, **Pirelli** is the current F1 tire supplier for 2026. The Italian tire manufacturer has confirmed the tire compounds for the 2026 season and has been granted contract extensions to continue as the exclusive tire supplier to Formula 1.
+
+Key points:
+1. Pirelli remains the official sole supplier of tires to Formula 1
+2. The FIA has extended Pirelli's contract, which includes the 2026 season
+3. Pirelli has already confirmed the specific tire compounds that will be used in 2026
+4. There will be some changes to the tire lineup for 2026, with one compound being dropped and a major redesign
+
+So the answer is: **Pirelli is the current F1 tire supplier for the 2026 season.**",Pirelli is the exclusive tire supplier.,PASS
