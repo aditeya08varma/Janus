@@ -20,6 +20,7 @@ pnpm-debug.log*
 .env.local
 .env.*
 !.env.example
+!backend/.env.example
 
 # --- SYSTEM / OS ---
 .DS_Store

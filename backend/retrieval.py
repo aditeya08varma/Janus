@@ -1,0 +1,201 @@
+"""Pure retrieval helpers — filter, sort, tag, cascade, optional rerank."""
+
+import logging
+from typing import Iterable, List, Optional, Sequence, Tuple
+
+from config import (
+    CASCADE_MAX_DEPTH,
+    CASCADE_SCORE_THRESHOLD,
+    CHEATSHEET_SOURCE,
+    DEFAULT_YEAR,
+    MIN_REG_YEAR,
+    RERANK_CANDIDATES,
+    RERANKER_MODEL,
+    RETRIEVAL_K,
+    env_flag,
+)
+
+logger = logging.getLogger(__name__)
+
+_reranker = None
+_reranker_failed = False
+
+
+def pinecone_year_filter(years: Sequence[int]) -> dict:
+    """Year filter that always includes the synonym CheatSheet (year=0)."""
+    clauses = [{"source": {"$eq": CHEATSHEET_SOURCE}}]
+    if years:
+        clauses.append({"year": {"$in": list(years)}})
+    return {"$or": clauses}
+
+
+def _year_int(doc) -> int:
+    try:
+        return int(doc.metadata.get("year") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def sort_key(doc) -> Tuple[int, int, int]:
+    """
+    CheatSheet first (synonyms help the LLM), then priority (1 before 2),
+    then recency. Recency is a tie-break among same-priority hits so a
+    superseded figure cannot outrank the current one on wording luck alone.
+    Hierarchical fallback still works because older years are only present
+    when cascade/lookback brought them in.
+    """
+    if doc.metadata.get("source") == CHEATSHEET_SOURCE:
+        return (0, 0, 0)
+    priority = int(doc.metadata.get("priority", 2) or 2)
+    return (1, priority, -_year_int(doc))
+
+
+def sort_results(docs: List) -> List:
+    return sorted(docs, key=sort_key)
+
+
+def status_for(doc, has_finalized: bool, newest_final_year: Optional[int]) -> str:
+    if doc.metadata.get("source") == CHEATSHEET_SOURCE:
+        return "[[SYNONYM CHEATSHEET]]"
+    priority = doc.metadata.get("priority", 2)
+    if priority == 1:
+        year = _year_int(doc)
+        if (
+            newest_final_year is not None
+            and year
+            and year < newest_final_year
+        ):
+            return "[[OFFICIAL FINALIZED — MAY BE SUPERSEDED BY NEWER YEAR]]"
+        return "[[OFFICIAL FINALIZED REGULATION]]"
+    if has_finalized:
+        return "[[OBSOLETE DRAFT]]"
+    return "[[PROVISIONAL DRAFT]]"
+
+
+def conflict_banner(docs: Sequence) -> str:
+    final_years = sorted(
+        {
+            _year_int(d)
+            for d in docs
+            if d.metadata.get("priority") == 1
+            and d.metadata.get("source") != CHEATSHEET_SOURCE
+            and _year_int(d) > 0
+        }
+    )
+    if len(final_years) < 2:
+        return ""
+    return (
+        f"[[CROSS-YEAR CONFLICT]] Official finalized text from years "
+        f"{final_years} is in this context. Prefer the newest year unless "
+        f"the user is asking for a comparison. Older-year figures may be superseded.\n---\n"
+    )
+
+
+def format_context(docs: Sequence) -> str:
+    if not docs:
+        return "No relevant regulations found."
+    has_finalized = any(
+        d.metadata.get("priority") == 1
+        and d.metadata.get("source") != CHEATSHEET_SOURCE
+        for d in docs
+    )
+    final_years = [
+        _year_int(d)
+        for d in docs
+        if d.metadata.get("priority") == 1
+        and d.metadata.get("source") != CHEATSHEET_SOURCE
+        and _year_int(d) > 0
+    ]
+    newest_final = max(final_years) if final_years else None
+    parts = [conflict_banner(docs)]
+    for doc in docs:
+        status = status_for(doc, has_finalized, newest_final)
+        parts.append(
+            f"SOURCE: {doc.metadata.get('source')} | YEAR: {doc.metadata.get('year')} | STATUS: {status}\n"
+            f"CONTENT: {doc.page_content}\n"
+        )
+    return "\n---\n".join(p for p in parts if p)
+
+
+def needs_cascade(scores: Iterable[float], threshold: float = CASCADE_SCORE_THRESHOLD) -> bool:
+    scores = list(scores)
+    if not scores:
+        return True
+    return max(scores) < threshold
+
+
+def cascade_years(base_years: Sequence[int], depth: int) -> List[int]:
+    """Widen lookback by `depth` additional years below the newest base year."""
+    newest = max(base_years) if base_years else DEFAULT_YEAR
+    years = set(base_years)
+    for step in range(1, depth + 1):
+        candidate = newest - step
+        if candidate >= MIN_REG_YEAR:
+            years.add(candidate)
+    return sorted(years, reverse=True)
+
+
+def max_cascade_depth(base_years: Sequence[int]) -> int:
+    newest = max(base_years) if base_years else DEFAULT_YEAR
+    return min(CASCADE_MAX_DEPTH, max(0, newest - MIN_REG_YEAR))
+
+
+def get_reranker():
+    global _reranker, _reranker_failed
+    if _reranker_failed or not env_flag("ENABLE_RERANKER", default=True):
+        return None
+    if _reranker is None:
+        try:
+            from sentence_transformers import CrossEncoder
+
+            _reranker = CrossEncoder(RERANKER_MODEL)
+        except Exception:
+            logger.exception("Cross-encoder reranker unavailable; using bi-encoder order")
+            _reranker_failed = True
+            return None
+    return _reranker
+
+
+def rerank_docs(query: str, docs: List, top_k: int = RETRIEVAL_K) -> List:
+    if not docs:
+        return []
+    model = get_reranker()
+    if model is None:
+        return docs[:top_k]
+    pairs = [(query, d.page_content) for d in docs]
+    scores = model.predict(pairs)
+    ranked = sorted(zip(docs, scores), key=lambda item: float(item[1]), reverse=True)
+    return [doc for doc, _ in ranked[:top_k]]
+
+
+def retrieve_with_cascade(vectorstore, query: str, search_years: Sequence[int], k: int = RERANK_CANDIDATES):
+    """
+    Query Pinecone, widening the year window only when the best hit is weak.
+    Returns (docs, years_used).
+    """
+    years = list(search_years)
+    scored: List[Tuple] = []
+    depth_cap = max_cascade_depth(years)
+    depth = 0
+
+    while True:
+        filt = pinecone_year_filter(years)
+        try:
+            scored = vectorstore.similarity_search_with_score(query, k=k, filter=filt)
+        except Exception:
+            logger.exception("similarity_search_with_score failed; falling back")
+            docs = vectorstore.similarity_search(query, k=k, filter=filt)
+            scored = [(d, 1.0) for d in docs]
+
+        scores = [s for _, s in scored]
+        if not needs_cascade(scores) or depth >= depth_cap:
+            break
+        depth += 1
+        widened = cascade_years(search_years, depth)
+        if set(widened) == set(years):
+            break
+        logger.info("Cascading year fallback to %s (best score too weak)", widened)
+        years = widened
+
+    docs = [d for d, _ in scored]
+    return docs, years

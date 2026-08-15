@@ -1,0 +1,6 @@
+question,ground_truth,difficulty
+"Is the MGU-H allowed in the 2026 Power Unit regulations?","No. The MGU-H (Motor Generator Unit - Heat) has been removed from the 2026 regulations to reduce costs and complexity.","Medium"
+"What are the two modes of the Active Aerodynamics system in 2026?","The two modes are Z-Mode (High Downforce) for corners and X-Mode (Low Drag) for straights.","Hard"
+"What is the maximum energy flow rate allowed for the 2026 Power Unit?","The fuel flow limit is energy-based, capped at 3000 MJ/h (Mega Joules per hour).","Hard"
+"How much power can the MGU-K deploy in 2026?","The MGU-K electrical power output has been increased to 350 kW (approximately 470 bhp).","Medium"
+"Who is the current F1 tire supplier for 2026?","Pirelli is the exclusive tire supplier.","Easy"
