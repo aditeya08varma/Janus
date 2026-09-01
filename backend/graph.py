@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import operator
 import os
@@ -43,6 +44,19 @@ def get_ddg():
     return _ddg
 
 
+def warm_dependencies():
+    """Force-load the embedding model, vectorstore, and reranker once, up front.
+
+    Called from FastAPI's lifespan so the first real user turn does not pay
+    for CrossEncoder/SentenceTransformer instantiation on top of its own
+    Pinecone + LLM latency.
+    """
+    from retrieval import get_reranker
+
+    get_vectorstore()
+    get_reranker()
+
+
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], operator.add]
 
@@ -80,27 +94,46 @@ def search_web(query: str):
 
 tools = [search_knowledge_base, search_web]
 
-llm = ChatDeepSeek(model="deepseek-chat", temperature=0, api_key=os.getenv("HUGIN"), max_retries=2)
+llm = ChatDeepSeek(
+    model="deepseek-chat",
+    temperature=0,
+    api_key=os.getenv("HUGIN"),
+    max_retries=2,
+    timeout=30,
+)
 llm_with_tools = llm.bind_tools(tools)
 
 
-def agent_node(state: AgentState):
-    return {"messages": [llm_with_tools.invoke(state["messages"])]}
+async def agent_node(state: AgentState):
+    return {"messages": [await llm_with_tools.ainvoke(state["messages"])]}
 
 
-def tool_node(state: AgentState):
-    messages = state["messages"]
-    last_message = messages[-1]
-    outputs = []
-    for tool_call in last_message.tool_calls:
-        selected_tool = next((t for t in tools if t.name == tool_call["name"]), None)
-        if selected_tool:
-            try:
-                res = selected_tool.invoke(tool_call["args"])
-                outputs.append(ToolMessage(content=str(res), name=tool_call["name"], tool_call_id=tool_call["id"]))
-            except Exception as e:
-                outputs.append(ToolMessage(content=f"Error: {str(e)}", name=tool_call["name"], tool_call_id=tool_call["id"]))
-    return {"messages": outputs}
+async def _run_tool_call(tool_call: dict) -> ToolMessage:
+    selected_tool = next((t for t in tools if t.name == tool_call["name"]), None)
+    if not selected_tool:
+        return ToolMessage(
+            content=f"Error: unknown tool {tool_call['name']}",
+            name=tool_call["name"],
+            tool_call_id=tool_call["id"],
+        )
+    try:
+        res = await asyncio.to_thread(selected_tool.invoke, tool_call["args"])
+        return ToolMessage(content=str(res), name=tool_call["name"], tool_call_id=tool_call["id"])
+    except Exception as e:
+        return ToolMessage(content=f"Error: {str(e)}", name=tool_call["name"], tool_call_id=tool_call["id"])
+
+
+async def tool_node(state: AgentState):
+    """Run every tool call from the last AI message concurrently.
+
+    A comparison query (e.g. "2025 vs 2026") issues one search_knowledge_base
+    call per year; running them via asyncio.gather instead of a sequential
+    loop means N Pinecone + embedding + rerank round trips overlap instead
+    of stacking latency N deep.
+    """
+    last_message = state["messages"][-1]
+    outputs = await asyncio.gather(*(_run_tool_call(tc) for tc in last_message.tool_calls))
+    return {"messages": list(outputs)}
 
 
 def router_function(state: AgentState):

@@ -25,7 +25,8 @@ def test_ai_brain_crash(mock_graph_builder):
         with client.stream("POST", "/chat", json=payload) as response:
             assert response.status_code == 200
             full_text = "".join([line.decode("utf-8") for line in response.iter_bytes()])
-            assert "[CRITICAL ERROR: Simulated graph failure]" in full_text
+            assert "[CRITICAL ERROR:" in full_text
+            assert "Simulated graph failure" not in full_text
 
 
 @patch("api.graph_builder")
