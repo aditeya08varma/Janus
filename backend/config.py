@@ -56,7 +56,11 @@ CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 100
 TABLE_CHUNK_SIZE = 2000
 
-RECURSION_LIMIT = 10
+RECURSION_LIMIT = 16  # 8 agent/tool round-trips. The tool-budget prompt rule (api.py
+# SYSTEM_PROMPT) usually converges in 3-4 rounds, but LLM output isn't perfectly
+# deterministic even at temperature=0 — an occasional extra round shouldn't be a
+# hard failure. 16 still catches a genuinely runaway loop; it just stops treating
+# "one round slower than usual" as one.
 REDIS_TTL_MINUTES = 1440  # langgraph-checkpoint-redis: minutes, not seconds
 RATE_LIMIT_PER_MINUTE = 20
 

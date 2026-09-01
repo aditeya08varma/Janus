@@ -174,6 +174,8 @@ def rerank_docs(query: str, docs: List, top_k: int = RETRIEVAL_K) -> List:
     pairs = [(query, d.page_content) for d in docs]
     scores = model.predict(pairs)
     ranked = sorted(zip(docs, scores), key=lambda item: float(item[1]), reverse=True)
+    top_scores = [round(float(s), 3) for _, s in ranked[:top_k]]
+    logger.info("rerank query=%r top_%d_scores=%s", query, top_k, top_scores)
     return [doc for doc, _ in ranked[:top_k]]
 
 
@@ -197,6 +199,10 @@ def retrieve_with_cascade(vectorstore, query: str, search_years: Sequence[int], 
             scored = [(d, 1.0) for d in docs]
 
         scores = [s for _, s in scored]
+        logger.info(
+            "search_knowledge_base query=%r years=%s best_score=%.4f scores=%s",
+            query, years, max(scores) if scores else 0.0, [round(s, 3) for s in scores],
+        )
         if not needs_cascade(scores) or depth >= depth_cap:
             break
         depth += 1

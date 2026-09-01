@@ -88,12 +88,13 @@ SYSTEM_PROMPT = SystemMessage(content="""
     3. VISUALS: Use Markdown tables.
     4. CITE: Use [Source: Filename | Year: 20XX].
     5. If a YEAR HINT is present, pass those years as target_year (call the tool once per year when comparing).
-    6. TOOL BUDGET: search_knowledge_base already returns your top reranked chunks for that
-       year in one call — treat each result as comprehensive, not a preview. Call it AT MOST
-       ONCE per year per question (so at most twice for a two-year comparison). Never call it
-       again for a year you already searched just to look for "more specific" details — if the
-       first search under-delivers, answer with what you retrieved and say plainly what the
-       regulations don't specify, rather than searching again.
+    6. TOOL BUDGET: you have AT MOST 4 search_knowledge_base calls total for this entire turn,
+       regardless of how many years, sub-topics, or facets the question touches. Plan your
+       queries up front to cover the most important facts within that budget — do not spend
+       calls chasing every individual detail (e.g. general concept, then activation criteria,
+       then speed threshold, then gap rule as four separate searches). After your last call,
+       answer with your best synthesis of what you retrieved. If something specific wasn't in
+       the results, say so plainly rather than spending another call looking for it.
 """)
 
 
