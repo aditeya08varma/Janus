@@ -8,11 +8,13 @@ from config import (
     CASCADE_SCORE_THRESHOLD,
     CHEATSHEET_SOURCE,
     DEFAULT_YEAR,
+    ML_INIT_LOCK,
     MIN_REG_YEAR,
     RERANK_CANDIDATES,
     RERANKER_MODEL,
     RETRIEVAL_K,
     env_flag,
+    load_offline_first,
 )
 
 logger = logging.getLogger(__name__)
@@ -141,18 +143,25 @@ def max_cascade_depth(base_years: Sequence[int]) -> int:
 
 
 def get_reranker():
+    """Thread-safe lazy singleton — see get_vectorstore() in graph.py for why this matters
+    now that tool calls run concurrently."""
     global _reranker, _reranker_failed
     if _reranker_failed or not env_flag("ENABLE_RERANKER", default=True):
         return None
     if _reranker is None:
-        try:
-            from sentence_transformers import CrossEncoder
+        with ML_INIT_LOCK:
+            if _reranker is None and not _reranker_failed:
+                try:
+                    import torch
+                    from sentence_transformers import CrossEncoder
 
-            _reranker = CrossEncoder(RERANKER_MODEL)
-        except Exception:
-            logger.exception("Cross-encoder reranker unavailable; using bi-encoder order")
-            _reranker_failed = True
-            return None
+                    torch.set_num_threads(1)  # see graph.get_vectorstore() for why
+                    # device="cpu": see graph.get_vectorstore() — MPS autodetection
+                    # isn't safe under concurrent tool calls, and prod has no GPU.
+                    _reranker = load_offline_first(lambda: CrossEncoder(RERANKER_MODEL, device="cpu"))
+                except Exception:
+                    logger.exception("Cross-encoder reranker unavailable; using bi-encoder order")
+                    _reranker_failed = True
     return _reranker
 
 

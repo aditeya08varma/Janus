@@ -6,6 +6,9 @@ venv/
 .venv/
 backend/janus_cache.json
 
+# ingest.py downloads these fresh from fia.com on every run; don't commit the cache
+backend/*.pdf
+
 # --- NODE / FRONTEND ---
 node_modules/
 dist/

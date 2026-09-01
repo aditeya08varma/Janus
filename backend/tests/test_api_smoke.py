@@ -6,10 +6,14 @@ import api as app_module
 
 def _fake_stream(*args, **kwargs):
     async def gen():
-        fake_message = MagicMock()
-        fake_message.content = "System Operational"
-        fake_message.tool_calls = []
-        yield {"agent": {"messages": [fake_message]}}
+        chunk = MagicMock()
+        chunk.content = "System Operational"
+        yield ("messages", (chunk, {"langgraph_node": "agent"}))
+
+        final_message = MagicMock()
+        final_message.content = "System Operational"
+        final_message.tool_calls = []
+        yield ("updates", {"agent": {"messages": [final_message]}})
 
     return gen()
 

@@ -1,8 +1,8 @@
+import asyncio
 import logging
 import os
 import re
 import time
-import traceback
 from collections import defaultdict
 from contextlib import asynccontextmanager
 
@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.redis.aio import AsyncRedisSaver
 
-from graph import graph_builder
+from graph import graph_builder, warm_dependencies
 from config import (
     DEFAULT_YEAR,
     RATE_LIMIT_PER_MINUTE,
@@ -38,11 +38,14 @@ _rate_hits = defaultdict(list)
 async def lifespan(app: FastAPI):
     """Open Redis (or in-memory fallback) and compile the graph once at startup."""
     app.state.graph = None
+
     if env_flag("JANUS_SKIP_REDIS"):
-        logger.warning("JANUS_SKIP_REDIS set — using in-memory checkpointer")
+        logger.warning("JANUS_SKIP_REDIS set — using in-memory checkpointer, skipping model warm-up")
         app.state.graph = graph_builder.compile(checkpointer=MemorySaver())
         yield
         return
+
+    await asyncio.to_thread(warm_dependencies)
 
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
     ttl = {"default_ttl": REDIS_TTL_MINUTES, "refresh_on_read": True}
@@ -195,22 +198,31 @@ async def chat_endpoint(request: ChatRequest, raw_request: Request):
             inputs = {"messages": [SYSTEM_PROMPT, HumanMessage(content=content)]}
 
         try:
-            async for chunk in graph.astream(inputs, config=config, stream_mode="updates"):
-                if "agent" in chunk:
-                    msg = chunk["agent"]["messages"][-1]
-                    if msg.tool_calls:
-                        for t in msg.tool_calls:
-                            years = extract_years(request.message)
-                            year = t["args"].get("target_year", years[0] if years else DEFAULT_YEAR)
-                            yield f"__LOG__🔍 ANALYZING {year} REGS...\n"
-                    elif msg.content:
-                        yield msg.content
-                elif "tools" in chunk:
-                    yield "__LOG__✅ DATA SECURED.\n"
-        except Exception as e:
-            traceback.print_exc()
+            async for stream_kind, payload in graph.astream(
+                inputs, config=config, stream_mode=["updates", "messages"]
+            ):
+                if stream_kind == "updates":
+                    if "agent" in payload:
+                        msg = payload["agent"]["messages"][-1]
+                        if msg.tool_calls:
+                            for t in msg.tool_calls:
+                                years = extract_years(request.message)
+                                year = t["args"].get("target_year", years[0] if years else DEFAULT_YEAR)
+                                # Leading \n: the model can stream preamble content (via the
+                                # "messages" branch below) immediately before deciding to call
+                                # a tool, with no guaranteed trailing newline. Without this, the
+                                # frontend's line-based __LOG__ parser sees one glued line and
+                                # renders the raw marker as visible text.
+                                yield f"\n__LOG__🔍 ANALYZING {year} REGS...\n"
+                    elif "tools" in payload:
+                        yield "\n__LOG__✅ DATA SECURED.\n"
+                elif stream_kind == "messages":
+                    message_chunk, metadata = payload
+                    if metadata.get("langgraph_node") == "agent" and message_chunk.content:
+                        yield message_chunk.content
+        except Exception:
             logger.exception("Graph run failed")
-            yield f"\n[CRITICAL ERROR: {str(e)}]"
+            yield "\n[CRITICAL ERROR: something went wrong processing that request. Please try again.]"
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
