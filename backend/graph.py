@@ -2,6 +2,7 @@ import asyncio
 import logging
 import operator
 import os
+import threading
 from typing import Annotated, TypedDict, List
 
 from dotenv import load_dotenv
@@ -12,7 +13,7 @@ from langchain_deepseek import ChatDeepSeek
 from langchain_community.tools import DuckDuckGoSearchRun
 from pydantic import BaseModel, Field
 
-from config import DEFAULT_YEAR, EMBEDDING_MODEL, INDEX_NAME, RETRIEVAL_K
+from config import DEFAULT_YEAR, EMBEDDING_MODEL, INDEX_NAME, ML_INIT_LOCK, RETRIEVAL_K, load_offline_first
 from retrieval import format_context, rerank_docs, retrieve_with_cascade, sort_results
 from year_extract import resolve_search_years
 
@@ -24,23 +25,59 @@ if os.getenv("MUNIN"):
 
 _vectorstore = None
 _ddg = None
+_ddg_lock = threading.Lock()
 
 
 def get_vectorstore():
+    """Thread-safe lazy singleton.
+
+    Tool calls now run concurrently (see tool_node), so two threads can reach
+    this on first use at the same time. Guarded by the shared ML_INIT_LOCK
+    (see config.py) rather than a private lock: concurrent first-touch of
+    PyTorch/tokenizers' native init from two threads has been observed to
+    segfault the process even when the two threads are constructing
+    *different* models (this vs. retrieval.get_reranker()) on separate locks.
+    warm_dependencies() populates this before any request arrives in
+    production, so the lock is a dev/JANUS_SKIP_REDIS-path safety net, not
+    the primary defense.
+    """
     global _vectorstore
     if _vectorstore is None:
-        from langchain_pinecone import PineconeVectorStore
-        from langchain_huggingface import HuggingFaceEmbeddings
+        with ML_INIT_LOCK:
+            if _vectorstore is None:
+                import torch
+                from langchain_pinecone import PineconeVectorStore
+                from langchain_huggingface import HuggingFaceEmbeddings
 
-        embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-        _vectorstore = PineconeVectorStore(index_name=INDEX_NAME, embedding=embeddings)
+                # Tool calls now run concurrently (multiple Python threads via
+                # asyncio.to_thread). Left at its default, PyTorch also spins up
+                # its own multi-threaded op pool *inside* each thread's forward
+                # pass — two or more of those pools fighting over the same few
+                # CPU cores causes severe oversubscription (observed: a single
+                # 2-year comparison query stalling for minutes instead of
+                # seconds). Pinning to 1 makes each embedding call single-
+                # threaded so the outer, thread-level concurrency is the only
+                # parallelism in play.
+                torch.set_num_threads(1)
+                # device="cpu": left unset, sentence-transformers auto-detects and
+                # silently picks MPS on Apple Silicon. PyTorch's MPS backend isn't
+                # safe for concurrent access from multiple threads (root cause of
+                # crashes reproduced under concurrent tool calls) — and production
+                # (Render, no GPU) only ever uses CPU anyway, so autodetection here
+                # was exercising a code path prod never runs.
+                embeddings = load_offline_first(
+                    lambda: HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL, model_kwargs={"device": "cpu"})
+                )
+                _vectorstore = PineconeVectorStore(index_name=INDEX_NAME, embedding=embeddings)
     return _vectorstore
 
 
 def get_ddg():
     global _ddg
     if _ddg is None:
-        _ddg = DuckDuckGoSearchRun()
+        with _ddg_lock:
+            if _ddg is None:
+                _ddg = DuckDuckGoSearchRun()
     return _ddg
 
 

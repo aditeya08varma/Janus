@@ -208,9 +208,14 @@ async def chat_endpoint(request: ChatRequest, raw_request: Request):
                             for t in msg.tool_calls:
                                 years = extract_years(request.message)
                                 year = t["args"].get("target_year", years[0] if years else DEFAULT_YEAR)
-                                yield f"__LOG__🔍 ANALYZING {year} REGS...\n"
+                                # Leading \n: the model can stream preamble content (via the
+                                # "messages" branch below) immediately before deciding to call
+                                # a tool, with no guaranteed trailing newline. Without this, the
+                                # frontend's line-based __LOG__ parser sees one glued line and
+                                # renders the raw marker as visible text.
+                                yield f"\n__LOG__🔍 ANALYZING {year} REGS...\n"
                     elif "tools" in payload:
-                        yield "__LOG__✅ DATA SECURED.\n"
+                        yield "\n__LOG__✅ DATA SECURED.\n"
                 elif stream_kind == "messages":
                     message_chunk, metadata = payload
                     if metadata.get("langgraph_node") == "agent" and message_chunk.content:
