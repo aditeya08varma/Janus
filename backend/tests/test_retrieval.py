@@ -68,6 +68,30 @@ def test_conflict_banner_and_superseded_tag():
     assert "CROSS-YEAR CONFLICT" in text
 
 
+def test_low_confidence_tag_from_reranker_score():
+    doc = SimpleNamespace(metadata={"priority": 1, "year": 2026, "source": "2026.pdf"})
+    assert "LOW CONFIDENCE" not in status_for(doc, True, 2026, score=None)
+    assert "LOW CONFIDENCE" not in status_for(doc, True, 2026, score=2.5)
+    assert "LOW CONFIDENCE" in status_for(doc, True, 2026, score=-1.2)
+
+
+def test_format_context_threads_scores_from_rerank_pairs():
+    strong = SimpleNamespace(
+        metadata={"priority": 1, "year": 2026, "source": "2026.pdf"},
+        page_content="350 kW",
+    )
+    weak = SimpleNamespace(
+        metadata={"priority": 1, "year": 2026, "source": "2026.pdf"},
+        page_content="unrelated aside",
+    )
+    text = format_context([(strong, 4.1), (weak, -3.0)])
+    entries = text.split("---")
+    assert "LOW CONFIDENCE" not in entries[0]
+    assert "LOW CONFIDENCE" in entries[1]
+    # Plain Document list (no reranker scores available) must still work.
+    assert "LOW CONFIDENCE" not in format_context([strong, weak])
+
+
 def test_needs_cascade():
     assert needs_cascade([]) is True
     assert needs_cascade([0.21, 0.18]) is True
