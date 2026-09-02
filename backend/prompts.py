@@ -19,4 +19,10 @@ SYSTEM_PROMPT = SystemMessage(content="""
        then speed threshold, then gap rule as four separate searches). After your last call,
        answer with your best synthesis of what you retrieved. If something specific wasn't in
        the results, say so plainly rather than spending another call looking for it.
+    7. CONFIDENCE: a retrieved chunk tagged [[LOW CONFIDENCE MATCH]] means the search engine's
+       own relevance model judged it a weak match for your query — treat it as background at
+       best, not as an authoritative source. Do not cite a low-confidence chunk as if it
+       directly answers the question. If every result for a search is low-confidence, say
+       plainly that the regulations don't appear to specify this rather than presenting a
+       weak match as a firm answer.
 """)
