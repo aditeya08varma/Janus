@@ -1,3 +1,16 @@
+# NOTE: ragas cannot be installed into backend/.venv alongside this project's
+# actual dependencies. ragas 0.1.x (the version whose flat-metric-instance API
+# this script uses — `faithfulness`, not `Faithfulness()`) requires
+# langchain-core<0.3; langgraph, langchain-pinecone, and langchain-deepseek
+# all require langchain-core>=1.x. Installing ragas here downgrades
+# langchain-core and breaks the actual app (confirmed: it did, and had to be
+# undone). Newer ragas versions (0.4.x) drop that constraint but then fail to
+# import for an unrelated reason (they still reference
+# langchain_community.chat_models.vertexai, removed from current
+# langchain-community) — and use a different metrics API this script doesn't
+# match anyway. Running this requires its own separate venv, isolated from
+# backend/.venv, with an older, pinned langchain/ragas stack — not something
+# this project's requirements.txt or requirements-eval.txt can express.
 import os
 import asyncio
 import pandas as pd
@@ -9,6 +22,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.messages import HumanMessage
 from config import EMBEDDING_MODEL
 from graph import graph_builder
+from prompts import SYSTEM_PROMPT
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,7 +45,8 @@ async def run_janus_with_tracing(question: str):
     2. The Retrieved Contexts (what the Tool returned)
     """
     graph = graph_builder.compile()
-    inputs = {"messages": [HumanMessage(content=question)]}
+    # Include the real SYSTEM_PROMPT — see run_evals.py for why this matters.
+    inputs = {"messages": [SYSTEM_PROMPT, HumanMessage(content=question)]}
     
     final_answer = ""
     retrieved_contexts = []
