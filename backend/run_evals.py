@@ -1,9 +1,10 @@
 import pandas as pd
 import asyncio
 import os
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from graph import graph_builder  # Import your actual brain
 from langchain_deepseek import ChatDeepSeek
+from prompts import SYSTEM_PROMPT
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,8 +20,11 @@ async def run_janus(question: str):
     """Runs your actual RAG agent locally (no API server needed)."""
     # Compile the graph without memory for a fresh run every time
     graph = graph_builder.compile()
-    
-    inputs = {"messages": [HumanMessage(content=question)]}
+
+    # Include the real SYSTEM_PROMPT — without it this harness was testing a
+    # bare agent with none of the year-defaulting, citation, or tool-budget
+    # rules the deployed /chat endpoint actually runs under.
+    inputs = {"messages": [SYSTEM_PROMPT, HumanMessage(content=question)]}
     final_output = ""
     
     # We just want the final answer, not the intermediate steps

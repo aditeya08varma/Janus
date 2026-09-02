@@ -1,117 +1,164 @@
 question,generated_answer,ground_truth,grade
-Is the MGU-H allowed in the 2026 Power Unit regulations?,"Based on my research through both the official FIA regulations database and web searches, I can now provide a definitive answer:
+Is the MGU-H allowed in the 2026 Power Unit regulations?,"I now have very clear evidence from the 2026 regulations. Let me analyze what I've found:
 
-**No, the MGU-H (Motor Generator Unit - Heat) is NOT allowed in the 2026 Power Unit regulations.**
+From the **2026 Technical Regulations** (2026_regs_tech_iss15.pdf), the definitions section (C3.4) lists the power unit components. Notably, the definitions include:
+- **C3.4.8**: ""MGU-K Control Unit"" (""CU-K"")
+- **C3.4.9**: ""MGU-K Mechanical Transmission""
+- **C3.4.11**: ""Motor Generator Unit – Kinetic"" (""MGU-K"")
 
-Here's what the research shows:
+And the technical requirements section (C5.18) covers the **MGU-K** in detail.
 
-## Key Findings:
+Critically, **there is NO definition or article for the MGU-H (Motor Generator Unit – Heat)** in the 2026 regulations. The MGU-H only appears in the **2025 regulations** (Article 5.3.4), which are the 2022-2025 era regulations.
 
-1. **MGU-H Removal**: The 2026 F1 power unit regulations have removed the MGU-H entirely from the specification. This is a major change from the 2014-2025 regulations where the MGU-H was a key component of the hybrid system.
+Additionally, the CheatSheet explicitly notes: `[Hybrid System] = ERS, Energy Recovery System, MGU-K, MGU-H (Archive only)` — indicating the MGU-H is now **archived** (i.e., no longer applicable).
 
-2. **Regulatory Evidence**: 
-   - The 2026 technical regulations (2026_regs_tech_iss15.pdf) only define and regulate the **MGU-K** (Motor Generator Unit - Kinetic)
-   - The 2025 regulations (2025_regs_tech_iss03.pdf) contain detailed definitions and regulations for both MGU-H and MGU-K
-   - The 2026 regulations reference only MGU-K in power unit element lists and technical specifications
+---
 
-3. **Technical Changes**:
-   - **MGU-K Power Increase**: The MGU-K output increases dramatically from 120kW (160 bhp) to 350kW (470 bhp)
-   - **50/50 Power Split**: The 2026 power units will deliver a 50/50 split between internal combustion engine power and electric power
-   - **Simplified Hybrid System**: Removal of the complex and expensive MGU-H system
+## Answer: **No, the MGU-H is NOT allowed in the 2026 Power Unit regulations.**
 
-4. **Reasons for Removal**:
-   - **Cost Reduction**: The MGU-H was expensive and complex to develop and manufacture
-   - **Road Relevance**: The technology lacked direct road car application
-   - **Weight Reduction**: Removing the MGU-H helps reduce overall car weight
-   - **Simplification**: Makes the power units more accessible to new manufacturers
+The **MGU-H (Motor Generator Unit – Heat)** has been **removed** from the 2026-2030 Power Unit regulations. Here's the breakdown:
 
-5. **What Remains**:
-   - 1.6-liter turbocharged V6 internal combustion engine (with some modifications)
-   - Enhanced MGU-K with significantly more power
-   - Energy Store (battery) system
-   - Advanced Sustainable Fuels requirement
+| Component | 2022–2025 Regulations | 2026–2030 Regulations |
+|---|---|---|
+| **MGU-H** (Motor Generator Unit – Heat) | ✅ Allowed (Article 5.3.4) | ❌ **Removed** |
+| **MGU-K** (Motor Generator Unit – Kinetic) | ✅ Allowed | ✅ Allowed (Article C5.18) |
+| **Energy Store (ES)** | ✅ Allowed | ✅ Allowed |
+| **Control Electronics (CE)** | ✅ Allowed | ✅ Allowed |
 
-The removal of the MGU-H represents one of the most significant changes in the 2026 power unit regulations, marking the end of a technology that had been part of F1 since the introduction of the current hybrid era in 2014.",No. The MGU-H (Motor Generator Unit - Heat) has been removed from the 2026 regulations to reduce costs and complexity.,PASS
-What are the two modes of the Active Aerodynamics system in 2026?,"Based on the information from the F1 regulations, I can now provide a clear answer about the two modes of the Active Aerodynamics system in 2026.
+### Key evidence from the 2026 Technical Regulations:
 
-According to the 2026 F1 Technical Regulations, the Active Aerodynamics system (also referred to as ""Driver Adjustable Bodywork"") has **two distinct modes**:
+1. **No MGU-H definition exists** — The 2026 regulations (Section C3.4) define the MGU-K, MGU-K Control Unit, and MGU-K Mechanical Transmission, but there is **no corresponding definition for an MGU-H**.
 
-1. **Corner Mode** - This is the high-incidence position that provides maximum downforce for cornering. In this mode:
-   - The Front Wing Profiles are in their high-incidence design position
-   - The Rear Wing (RW) Flap is in its high-incidence design position
-   - This configuration maximizes aerodynamic downforce for cornering grip
+2. **No MGU-H technical requirements** — Article C5.18 covers the MGU-K in detail (mechanical linkage, speed limits, torque limitation device, etc.), but there is no equivalent article for an MGU-H.
 
-2. **Straight-Line Mode** - This is the low-incidence position that reduces drag for straight-line speed. In this mode:
-   - The Front Wing Profiles are in their low-incidence position (decreased incidence compared to Corner Mode)
-   - The Rear Wing Flap is in its low-incidence position (decreased incidence compared to Corner Mode)
-   - This configuration reduces aerodynamic drag for higher straight-line speeds
+3. **The CheatSheet explicitly marks MGU-H as ""Archive only""** — confirming it belongs to the previous regulatory era.
 
-The regulations specify that:
-- The system must switch between these two fixed positions only
-- The transition time between modes cannot exceed 400ms
-- The system is controlled by the FIA Standard ECU
-- The magnitude of incidence decrease from Corner Mode to Straight-Line Mode must always remain identical
+### Why was it removed?
 
-Additionally, the Sporting Regulations mention that there can be a ""partially activated"" state where the front wing is in Straight-Line Mode but the rear wing remains in Corner Mode, but the two primary modes are Corner Mode and Straight-Line Mode.",The two modes are Z-Mode (High Downforce) for corners and X-Mode (Low Drag) for straights.,FAIL
-What is the maximum energy flow rate allowed for the 2026 Power Unit?,"Based on the official 2026 F1 regulations, I can provide you with the maximum energy flow rate information for the 2026 Power Unit:
+The MGU-H was dropped as part of the 2026 Power Unit overhaul, which was driven by several factors:
+- **Cost reduction** — The MGU-H was one of the most expensive and complex components to develop.
+- **Attracting new manufacturers** — Removing the MGU-H lowered the technical barrier to entry, helping bring in new PU suppliers (e.g., Audi and Ford/Red Bull Powertrains).
+- **Simplification** — The 2026 PU shifts to a simpler architecture with a more powerful MGU-K (~350 kW) and a higher electrical energy deployment, while eliminating the heat-recovery complexity.
 
-## Maximum Energy Flow Rate for 2026 F1 Power Unit
+[Source: 2026_regs_tech_iss15.pdf | Year: 2026]",No. The MGU-H (Motor Generator Unit - Heat) has been removed from the 2026 regulations to reduce costs and complexity.,PASS
+What are the two modes of the Active Aerodynamics system in 2026?,"Based on the search results, I have the information needed to answer this question clearly.
 
-According to the **2026 Formula 1 Technical Regulations (Issue 15, December 2025)**, the key energy flow limits are:
+## The Two Modes of the Active Aerodynamics System in 2026
 
-### **1. Maximum Electrical Power (ERS-K):**
-- **350 kW** (Article C5.2.7) - This is the absolute maximum electrical DC power of the ERS-K (Energy Recovery System - Kinetic)
+The 2026 F1 Technical Regulations define **two fixed positions** for the Active Aerodynamics (Driver Adjustable Bodywork) system, which replaces the current DRS:
 
-### **2. Fuel Energy Flow Limits:**
-- **Maximum fuel energy flow: 3,000 MJ/h** (Article C5.2.3)
-- Below 10,500 rpm, the fuel energy flow must not exceed: **EF (MJ/h) = 0.27 × N(rpm) + 165**
+| Mode | Also Known As | Description |
+|------|--------------|-------------|
+| **Corner Mode** | Z-Mode, High Downforce Mode, Standard Configuration | The default position that exactly conforms to the standard Rear Wing Profile position defined in Article C3.11.1. It provides maximum downforce for cornering. |
+| **Straight-Line Mode** | X-Mode, Low Drag Mode, High Speed Configuration | A position that results in a **decrease in incidence** of the RW Flap compared to Corner Mode, reducing drag for high-speed straights. |
 
-### **3. Energy Storage and Transfer Limits:**
-- **Maximum delta State of Charge (SoC): 4 MJ** (Article C5.2.9)
-- **Maximum energy per lap from CU-K HV DC Bus: up to 9 MJ** (Article C5.2.10)
+### Key Technical Requirements (Article C3.11.6):
 
-### **4. Additional Power Delivery Constraints:**
-The electrical DC power of the ERS-K used to propel the car may not exceed:
-- **P(kW) = 1800 - 5 × car speed (kph)** when car speed is below 340 kph
-- **P(kW) = 6900 - 20 × car speed (kph)** when car speed is between 340-345 kph
+- **Transition time**: Maximum of **400ms** between the two fixed positions
+- **Actuation**: Driven by a **single actuator** (electrical or fluidic)
+- **Sensing**: A position sensor mechanically linked to the RW Flap, outputting analogue signals calibrated over actuator travel, connected to the FIA Standard ECU
 
-### **Summary:**
-The **maximum energy flow rate** for the 2026 Power Unit is governed by:
-- **Electrical power: 350 kW maximum** from the ERS-K
-- **Fuel energy flow: 3,000 MJ/h maximum** (approximately 833.3 kW equivalent)
-- **Total power output** combines both the internal combustion engine and electrical systems
+### Activation States (Sporting Regulations):
 
-These regulations represent a significant change from previous years, with increased electrical power contribution and new energy management strategies for the 2026 season.","The fuel flow limit is energy-based, capped at 3000 MJ/h (Mega Joules per hour).",FAIL
-How much power can the MGU-K deploy in 2026?,"Based on my research, I can now provide you with a comprehensive answer about the MGU-K power deployment for the 2026 Formula 1 season:
+The system can be in one of three states:
+1. **Fully activated** — Both the Front Wing Profiles **and** the RW Flap are in Straight-Line Mode (low incidence)
+2. **Partially activated** — Front Wing Profiles in Straight-Line Mode, but RW Flap still in Corner Mode
+3. **Not activated** — Both in Corner Mode
 
-## MGU-K Power Deployment for 2026 Formula 1
+[Source: 2026_regs_tech_iss15.pdf | Year: 2026] and [Source: 2026_regs_sport_iss04.pdf | Year: 2026]",The two modes are Z-Mode (High Downforce) for corners and X-Mode (Low Drag) for straights.,PASS
+What is the maximum energy flow rate allowed for the 2026 Power Unit?,"Based on the 2026 regulations, here's the answer:
 
-For the 2026 Formula 1 season, the MGU-K (Motor Generator Unit - Kinetic) will have a **maximum power output of 350 kW (approximately 469 horsepower)**.
+## 2026 Power Unit Maximum Energy Flow Rate
 
-### Key Details:
+For the **2026 Power Unit**, the regulations have shifted from a **fuel mass flow** limit (kg/h) to a **fuel energy flow** limit (MJ/h). Here are the key figures:
 
-1. **Significant Power Increase**: This represents nearly a **300% increase** from the current 120 kW (161 hp) MGU-K power output used in the 2022-2025 regulations.
+| Parameter | 2026 Limit | Article |
+|-----------|-----------|---------|
+| **Maximum fuel energy flow** | **3000 MJ/h** | C5.2.3 |
+| Below 10,500 rpm | EF (MJ/h) = 0.27 × N(rpm) + 165 | C5.2.4 |
+| Partial load (engine power ≤ −50 kW) | EF = 380 MJ/h | C5.2.5 |
+| Partial load (engine power > −50 kW) | EF = 9.78 × P(kW) + 869 MJ/h | C5.2.5 |
 
-2. **Power Distribution**: The 2026 power unit regulations introduce a rebalanced power distribution where:
-   - **Internal Combustion Engine (ICE)**: 400 kW
-   - **MGU-K**: 350 kW
-   - **Total Combined Power**: 750 kW (approximately 1,005 horsepower)
+### Key Context for 2026
 
-3. **Simplified Hybrid System**: The 2026 regulations eliminate the MGU-H (Motor Generator Unit - Heat) entirely, making the MGU-K the sole electrical component in the hybrid system.
+- **The headline maximum is 3000 MJ/h** (Article C5.2.3), which is the absolute ceiling for fuel energy flow.
+- This is a **major regulatory change** from the 2025/current era, which capped fuel *mass* flow at **100 kg/h** (with a formula of Q = 0.009 × N + 5.5 below 10,500 rpm). The 2026 regs convert this to an *energy* basis using the fuel's Lower Heating Value (LHV) as measured by the FIA.
+- Compliance is assessed by the SECU converting measured fuel mass flow into energy flow using the FIA-determined energy density and LHV (per Article C5.2.6).
 
-4. **Torque Limit**: According to the FIA regulations, the MGU-K mechanical torque magnitude may not exceed **500 Nm** (referenced to crankshaft speed).
+### Related 2026 ERS Energy Limits (for context)
 
-5. **Power Deployment Strategy**: The MGU-K will deploy its maximum 350 kW power up to 290 kph (180 mph). Above this speed, there is a regulatory drop in maximum MGU-K power, though ""Overtake Mode"" can override this limitation.
+| Component | Limit | Article |
+|-----------|-------|---------|
+| Energy Store max power | 350 kW | C5.2.7 |
+| Energy Store max delta SoC | 4 MJ | C5.2.9 |
+| Max energy per lap from CU-K | up to 9 MJ | C5.2.10 |
 
-6. **Energy Recovery**: The increased MGU-K power means significantly enhanced regenerative braking capabilities, with the system playing a much larger role in both acceleration and energy recovery during braking.
+[Source: 2026_regs_tech_iss15.pdf | Year: 2026]","The fuel flow limit is energy-based, capped at 3000 MJ/h (Mega Joules per hour).",PASS
+How much power can the MGU-K deploy in 2026?,"I now have all the key data I need. Let me compile the answer.
 
-This substantial increase in MGU-K power is part of Formula 1's move toward more sustainable racing while maintaining performance, with the electrical component providing nearly half of the total power output and playing a crucial role in overtaking and straight-line speed.",The MGU-K electrical power output has been increased to 350 kW (approximately 470 bhp).,PASS
-Who is the current F1 tire supplier for 2026?,"Based on the search results, **Pirelli** is the current F1 tire supplier for 2026. The Italian tire manufacturer has confirmed the tire compounds for the 2026 season and has been granted contract extensions to continue as the exclusive tire supplier to Formula 1.
+## 2026 MGU-K Power Deployment
 
-Key points:
-1. Pirelli remains the official sole supplier of tires to Formula 1
-2. The FIA has extended Pirelli's contract, which includes the 2026 season
-3. Pirelli has already confirmed the specific tire compounds that will be used in 2026
-4. There will be some changes to the tire lineup for 2026, with one compound being dropped and a major redesign
+Under the **2026 FIA Formula 1 Technical Regulations** (the new power unit era), the MGU-K deployment limits are significantly higher than the current generation. Here's the breakdown:
 
-So the answer is: **Pirelli is the current F1 tire supplier for the 2026 season.**",Pirelli is the exclusive tire supplier.,PASS
+### Maximum Power Output
+
+| Parameter | 2026 Value | 2025 (Current) Value |
+|-----------|-----------|---------------------|
+| **Max MGU-K power (absolute)** | **350 kW** | 120 kW |
+| **Max MGU-K recovery (regenerative)** | **350 kW** | −120 kW |
+| **Max ES energy per lap** | **up to 9 MJ** | 4 MJ |
+| **Max ES power** | **350 kW** | 120 kW |
+
+[Source: 2026_regs_tech_iss15.pdf | Year: 2026]
+
+### Key Regulatory Details (Article C5.2.7–C5.2.8)
+
+1. **Absolute limit (C5.2.7):** The absolute electrical DC power of the ERS-K may not exceed **350 kW**.
+
+2. **Speed-dependent deployment limit (C5.2.8):** The power used to *propel* the car is further capped by a speed-based formula:
+   - **Below 340 km/h:** P(kW) = 1800 − 5 × car speed (kph)
+   - **340–345 km/h:** P(kW) = 6900 − 20 × car speed (kph)
+   - **≥ 345 km/h:** P(kW) = 0 (no deployment)
+
+   This means at low speed (e.g., 100 km/h), the deployable power is capped at ~1,300 kW — but the **350 kW absolute ceiling** is the binding constraint. The speed taper effectively phases out ERS deployment at very high speeds.
+
+3. **Standing start (C5.2.12):** The MGU-K may only be used once the car reaches **50 km/h** from the grid.
+
+### Context: Why the Big Jump?
+
+The 2026 regulations represent a major shift in the power unit architecture:
+- The **MGU-H is removed** entirely.
+- The **ICE** is a new 1.6L V6 running on **100% sustainable fuel** with a higher electrical power share.
+- The **350 kW** MGU-K (roughly **470 hp**) is a near-tripling of the current 120 kW unit, making the electrical system a far more significant contributor to total power output.
+
+This is a dramatic increase from the current era's 120 kW, and combined with the 9 MJ/lap energy budget, the 2026 hybrid system will be a substantially more powerful and strategically important element of the power unit.
+
+[Source: 2026_regs_tech_iss15.pdf | Year: 2026]",The MGU-K electrical power output has been increased to 350 kW (approximately 470 bhp).,PASS
+Who is the current F1 tire supplier for 2026?,"Based on my research, here's the answer:
+
+## F1 Tire Supplier for 2026: **Pirelli**
+
+**Pirelli** remains the exclusive tire supplier for the FIA Formula One World Championship for the 2026 season. The Italian manufacturer's contract extends through the **end of the 2028 season**, covering F1, F2, F3, and F1 ACADEMY. [Source: Web search | Year: 2026]
+
+### Key 2026 Tire Details
+
+| Aspect | 2026 Details |
+|--------|-------------|
+| **Supplier** | Pirelli (exclusive) |
+| **Dry-weather compounds** | 3 specifications per race (per regs) |
+| **Intermediate** | 1 specification |
+| **Wet-weather** | 1 specification |
+| **New for 2026** | The **C6 compound** (introduced in 2025) has been **dropped** — the softest option from last year is gone |
+| **Compound range** | All five remaining compounds will be used across the first three races |
+
+### Regulatory Framework (2026)
+
+Per the 2026 Sporting Regulations (B6.1.1), the single tyre manufacturer appointed by the FIA must provide:
+- **Three (3) dry-weather** tyre specifications
+- **One (1) intermediate** specification
+- **One (1) wet-weather** specification
+
+Each must be visibly distinguishable from one another on track. Additionally, at certain Standard Format Competitions, an **extra dry-weather specification** may be made available for **In-Competition Tyre Evaluation (ICTE)**. [Source: 2026_regs_sport_iss04.pdf | Year: 2026]
+
+### Notable 2026 Change
+Pirelli has **homologated the 2026 tires** with a notable shift: the **C6 ultra-soft compound** (used in 2025 at Imola, Monaco, Canada, and Azerbaijan) has been **eliminated**, simplifying the compound range for the new regulations era. [Source: Web search | Year: 2026]",Pirelli is the exclusive tire supplier.,PASS

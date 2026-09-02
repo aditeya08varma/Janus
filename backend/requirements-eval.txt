@@ -1,0 +1,11 @@
+# Extra dependencies for run_evals.py (the LLM-as-judge harness) only.
+# Kept separate from requirements.txt so the production Docker image doesn't
+# carry eval-only weight. Install with:
+#   pip install -r requirements.txt -r requirements-eval.txt
+#
+# run_ragas.py is NOT covered here — it needs an older, separately-pinned
+# ragas/langchain stack that's incompatible with this project's actual
+# dependencies (langchain-core>=1.x). See the note at the top of
+# run_ragas.py for the full explanation; running it requires its own
+# isolated virtualenv, not an addition to this file.
+pandas>=2.0.0
