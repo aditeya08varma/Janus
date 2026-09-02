@@ -8,6 +8,7 @@ from config import (
     CASCADE_SCORE_THRESHOLD,
     CHEATSHEET_SOURCE,
     DEFAULT_YEAR,
+    LOW_CONFIDENCE_THRESHOLD,
     ML_INIT_LOCK,
     MIN_REG_YEAR,
     RERANK_CANDIDATES,
@@ -56,22 +57,33 @@ def sort_results(docs: List) -> List:
     return sorted(docs, key=sort_key)
 
 
-def status_for(doc, has_finalized: bool, newest_final_year: Optional[int]) -> str:
+def status_for(doc, has_finalized: bool, newest_final_year: Optional[int], score: Optional[float] = None) -> str:
     if doc.metadata.get("source") == CHEATSHEET_SOURCE:
-        return "[[SYNONYM CHEATSHEET]]"
-    priority = doc.metadata.get("priority", 2)
-    if priority == 1:
-        year = _year_int(doc)
-        if (
-            newest_final_year is not None
-            and year
-            and year < newest_final_year
-        ):
-            return "[[OFFICIAL FINALIZED — MAY BE SUPERSEDED BY NEWER YEAR]]"
-        return "[[OFFICIAL FINALIZED REGULATION]]"
-    if has_finalized:
-        return "[[OBSOLETE DRAFT]]"
-    return "[[PROVISIONAL DRAFT]]"
+        tag = "[[SYNONYM CHEATSHEET]]"
+    else:
+        priority = doc.metadata.get("priority", 2)
+        if priority == 1:
+            year = _year_int(doc)
+            if (
+                newest_final_year is not None
+                and year
+                and year < newest_final_year
+            ):
+                tag = "[[OFFICIAL FINALIZED — MAY BE SUPERSEDED BY NEWER YEAR]]"
+            else:
+                tag = "[[OFFICIAL FINALIZED REGULATION]]"
+        elif has_finalized:
+            tag = "[[OBSOLETE DRAFT]]"
+        else:
+            tag = "[[PROVISIONAL DRAFT]]"
+    if score is not None and score < LOW_CONFIDENCE_THRESHOLD:
+        # The cross-encoder's own judgment that this chunk isn't a strong
+        # match for the query, computed on every search since the recursion-
+        # loop investigation but discarded until now — surfaced here so the
+        # agent can weigh a weak match differently instead of treating every
+        # retrieved chunk as equally trustworthy.
+        tag = f"{tag} [[LOW CONFIDENCE MATCH — relevance score {score:.2f}]]"
+    return tag
 
 
 def conflict_banner(docs: Sequence) -> str:
@@ -93,9 +105,15 @@ def conflict_banner(docs: Sequence) -> str:
     )
 
 
-def format_context(docs: Sequence) -> str:
-    if not docs:
+def format_context(ranked: Sequence) -> str:
+    """ranked: a sequence of Documents, or (Document, score) pairs from
+    rerank_docs — score is the cross-encoder's relevance judgment, used to
+    tag weak matches so the agent doesn't treat every chunk as equally
+    trustworthy. Plain Documents (no score available) still work."""
+    if not ranked:
         return "No relevant regulations found."
+    pairs = [item if isinstance(item, tuple) else (item, None) for item in ranked]
+    docs = [d for d, _ in pairs]
     has_finalized = any(
         d.metadata.get("priority") == 1
         and d.metadata.get("source") != CHEATSHEET_SOURCE
@@ -110,8 +128,8 @@ def format_context(docs: Sequence) -> str:
     ]
     newest_final = max(final_years) if final_years else None
     parts = [conflict_banner(docs)]
-    for doc in docs:
-        status = status_for(doc, has_finalized, newest_final)
+    for doc, score in pairs:
+        status = status_for(doc, has_finalized, newest_final, score)
         parts.append(
             f"SOURCE: {doc.metadata.get('source')} | YEAR: {doc.metadata.get('year')} | STATUS: {status}\n"
             f"CONTENT: {doc.page_content}\n"
@@ -165,18 +183,22 @@ def get_reranker():
     return _reranker
 
 
-def rerank_docs(query: str, docs: List, top_k: int = RETRIEVAL_K) -> List:
+def rerank_docs(query: str, docs: List, top_k: int = RETRIEVAL_K) -> List[Tuple]:
+    """Returns (doc, score) pairs, sorted by relevance descending, truncated
+    to top_k. score is None when the reranker isn't available (bi-encoder
+    order kept as-is) — format_context treats a None score as "no
+    confidence signal" rather than tagging it low-confidence."""
     if not docs:
         return []
     model = get_reranker()
     if model is None:
-        return docs[:top_k]
+        return [(d, None) for d in docs[:top_k]]
     pairs = [(query, d.page_content) for d in docs]
     scores = model.predict(pairs)
     ranked = sorted(zip(docs, scores), key=lambda item: float(item[1]), reverse=True)
-    top_scores = [round(float(s), 3) for _, s in ranked[:top_k]]
-    logger.info("rerank query=%r top_%d_scores=%s", query, top_k, top_scores)
-    return [doc for doc, _ in ranked[:top_k]]
+    top = ranked[:top_k]
+    logger.info("rerank query=%r top_%d_scores=%s", query, top_k, [round(float(s), 3) for _, s in top])
+    return [(doc, float(score)) for doc, score in top]
 
 
 def retrieve_with_cascade(vectorstore, query: str, search_years: Sequence[int], k: int = RERANK_CANDIDATES):

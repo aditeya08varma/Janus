@@ -50,6 +50,12 @@ RETRIEVAL_K = 8
 RERANK_CANDIDATES = 24
 CASCADE_SCORE_THRESHOLD = 0.40
 CASCADE_MAX_DEPTH = 3
+# Cross-encoder logit threshold below which a reranked chunk gets tagged
+# [[LOW CONFIDENCE MATCH]] in the context instead of presented like any
+# other result. 0.0 matches the same cutoff already used as the retrieval-
+# precision-proxy metric in run_evals.py, so the metric and the actual
+# agent-facing signal stay consistent with each other.
+LOW_CONFIDENCE_THRESHOLD = 0.0
 
 CHEATSHEET_SOURCE = "CheatSheet"
 CHUNK_SIZE = 1000
