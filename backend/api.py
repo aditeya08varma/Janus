@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.redis.aio import AsyncRedisSaver
 
-from graph import graph_builder, warm_dependencies
+from graph import MAX_KB_CALLS_PER_TURN, graph_builder, warm_dependencies
 from config import (
     DEFAULT_YEAR,
     RATE_LIMIT_PER_MINUTE,
@@ -88,12 +88,13 @@ SYSTEM_PROMPT = SystemMessage(content="""
     3. VISUALS: Use Markdown tables.
     4. CITE: Use [Source: Filename | Year: 20XX].
     5. If a YEAR HINT is present, pass those years as target_year (call the tool once per year when comparing).
-    6. TOOL BUDGET: search_knowledge_base already returns your top reranked chunks for that
-       year in one call — treat each result as comprehensive, not a preview. Call it AT MOST
-       ONCE per year per question (so at most twice for a two-year comparison). Never call it
-       again for a year you already searched just to look for "more specific" details — if the
-       first search under-delivers, answer with what you retrieved and say plainly what the
-       regulations don't specify, rather than searching again.
+    6. TOOL BUDGET: you have AT MOST 4 search_knowledge_base calls total for this entire turn,
+       regardless of how many years, sub-topics, or facets the question touches. Plan your
+       queries up front to cover the most important facts within that budget — do not spend
+       calls chasing every individual detail (e.g. general concept, then activation criteria,
+       then speed threshold, then gap rule as four separate searches). After your last call,
+       answer with your best synthesis of what you retrieved. If something specific wasn't in
+       the results, say so plainly rather than spending another call looking for it.
 """)
 
 
@@ -203,6 +204,8 @@ async def chat_endpoint(request: ChatRequest, raw_request: Request):
         else:
             inputs = {"messages": [SYSTEM_PROMPT, HumanMessage(content=content)]}
 
+        kb_calls_logged = 0
+
         try:
             async for stream_kind, payload in graph.astream(
                 inputs, config=config, stream_mode=["updates", "messages"]
@@ -212,6 +215,16 @@ async def chat_endpoint(request: ChatRequest, raw_request: Request):
                         msg = payload["agent"]["messages"][-1]
                         if msg.tool_calls:
                             for t in msg.tool_calls:
+                                # tool_node enforces MAX_KB_CALLS_PER_TURN per-call, not just
+                                # per-round, and short-circuits any search_knowledge_base call
+                                # past the cap without executing it. Mirror that here so the
+                                # telemetry log doesn't show "ANALYZING" for a search that never
+                                # actually ran against Pinecone.
+                                if t["name"] == "search_knowledge_base":
+                                    kb_calls_logged += 1
+                                    if kb_calls_logged > MAX_KB_CALLS_PER_TURN:
+                                        yield "\n__LOG__⚠️ SEARCH BUDGET REACHED, SKIPPING...\n"
+                                        continue
                                 years = extract_years(request.message)
                                 year = t["args"].get("target_year", years[0] if years else DEFAULT_YEAR)
                                 # Leading \n: the model can stream preamble content (via the

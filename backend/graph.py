@@ -7,7 +7,7 @@ from typing import Annotated, TypedDict, List
 
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
-from langchain_core.messages import BaseMessage, ToolMessage
+from langchain_core.messages import BaseMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_deepseek import ChatDeepSeek
 from langchain_community.tools import DuckDuckGoSearchRun
@@ -139,10 +139,45 @@ llm = ChatDeepSeek(
     timeout=30,
 )
 llm_with_tools = llm.bind_tools(tools)
+# Bound once, without search_knowledge_base: used once the per-turn search
+# budget is spent. search_web stays available — it's not implicated in the
+# runaway-search behavior this caps, and cutting it too could break
+# legitimate live-news follow-ups.
+llm_over_budget = llm.bind_tools([t for t in tools if t.name != "search_knowledge_base"])
+
+MAX_KB_CALLS_PER_TURN = 4
+BUDGET_EXHAUSTED_NUDGE = SystemMessage(
+    content="You have used all available regulation searches for this question. "
+    "Answer now using only what you already retrieved above."
+)
+
+
+def _kb_calls_this_turn(messages) -> int:
+    """Count search_knowledge_base tool calls since the most recent human
+    message, so the budget resets each new user turn instead of accumulating
+    across an entire persisted conversation."""
+    count = 0
+    for msg in reversed(messages):
+        if getattr(msg, "type", "") == "human":
+            break
+        for tc in getattr(msg, "tool_calls", None) or []:
+            if tc.get("name") == "search_knowledge_base":
+                count += 1
+    return count
 
 
 async def agent_node(state: AgentState):
-    return {"messages": [await llm_with_tools.ainvoke(state["messages"])]}
+    messages = state["messages"]
+    if _kb_calls_this_turn(messages) >= MAX_KB_CALLS_PER_TURN:
+        # A system-prompt instruction to stop at 4 calls was reliably ignored —
+        # the model kept searching "for more specific details" past the stated
+        # budget on complex comparisons. Removing the tool from what it's even
+        # offered makes stopping the only option instead of a request it can
+        # reason past.
+        response = await llm_over_budget.ainvoke([*messages, BUDGET_EXHAUSTED_NUDGE])
+    else:
+        response = await llm_with_tools.ainvoke(messages)
+    return {"messages": [response]}
 
 
 async def _run_tool_call(tool_call: dict) -> ToolMessage:
@@ -160,6 +195,14 @@ async def _run_tool_call(tool_call: dict) -> ToolMessage:
         return ToolMessage(content=f"Error: {str(e)}", name=tool_call["name"], tool_call_id=tool_call["id"])
 
 
+async def _budget_exceeded_message(tool_call: dict) -> ToolMessage:
+    return ToolMessage(
+        content="Search budget for this question has been used. Answer with what you already have.",
+        name=tool_call["name"],
+        tool_call_id=tool_call["id"],
+    )
+
+
 async def tool_node(state: AgentState):
     """Run every tool call from the last AI message concurrently.
 
@@ -167,9 +210,30 @@ async def tool_node(state: AgentState):
     call per year; running them via asyncio.gather instead of a sequential
     loop means N Pinecone + embedding + rerank round trips overlap instead
     of stacking latency N deep.
+
+    agent_node's budget check happens once per round, before the model
+    decides what to call — it can't stop a single round that bundles more
+    search_knowledge_base calls than the remaining budget in one shot (e.g.
+    3 calls left, model requests 4). This is the exact backstop: count how
+    many of *this* round's requested calls are still within budget and skip
+    executing the rest, rather than letting the round-level check alone
+    allow the total to overshoot the stated cap.
     """
-    last_message = state["messages"][-1]
-    outputs = await asyncio.gather(*(_run_tool_call(tc) for tc in last_message.tool_calls))
+    messages = state["messages"]
+    last_message = messages[-1]
+    remaining = max(0, MAX_KB_CALLS_PER_TURN - _kb_calls_this_turn(messages[:-1]))
+
+    coros = []
+    kb_index = 0
+    for tc in last_message.tool_calls:
+        if tc["name"] == "search_knowledge_base":
+            kb_index += 1
+            if kb_index > remaining:
+                coros.append(_budget_exceeded_message(tc))
+                continue
+        coros.append(_run_tool_call(tc))
+
+    outputs = await asyncio.gather(*coros)
     return {"messages": list(outputs)}
 
 
