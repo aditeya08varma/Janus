@@ -4,6 +4,23 @@ from fastapi.testclient import TestClient
 import api as app_module
 
 
+def test_strip_year_hint_multi_year():
+    # Regression: year_hint() embeds a Python list repr ("[2025, 2026]")
+    # inside the [YEAR HINT: ...] block. A non-greedy strip regex used to
+    # stop at that inner "]" instead of the block's real closing bracket,
+    # leaking the tail of the hint into the user's own message on history
+    # reload.
+    raw = (
+        "Compare 2025 DRS with 2026 Active Aero (X/Z Mode)"
+        "\n\n[YEAR HINT: The query mentions [2025, 2026]. "
+        "Use these as target_year values. For comparisons, search each year.]"
+    )
+    stripped = app_module._strip_year_hint(raw)
+    assert stripped == "Compare 2025 DRS with 2026 Active Aero (X/Z Mode)"
+    assert "YEAR HINT" not in stripped
+    assert "target_year" not in stripped
+
+
 def test_missing_session_id():
     with patch("api.graph_builder") as mock_builder:
         mock_builder.compile.return_value = MagicMock()

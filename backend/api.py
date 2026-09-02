@@ -30,7 +30,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("janus.api")
 
-YEAR_HINT_RE = re.compile(r"\n\n\[YEAR HINT:.*?\]", re.DOTALL)
+YEAR_HINT_RE = re.compile(r"\n\n\[YEAR HINT:.*\]", re.DOTALL)
 _rate_hits = defaultdict(list)
 
 
