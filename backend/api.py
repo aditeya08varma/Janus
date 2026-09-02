@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.redis.aio import AsyncRedisSaver
 
-from graph import graph_builder, warm_dependencies
+from graph import MAX_KB_CALLS_PER_TURN, graph_builder, warm_dependencies
 from config import (
     DEFAULT_YEAR,
     RATE_LIMIT_PER_MINUTE,
@@ -204,6 +204,8 @@ async def chat_endpoint(request: ChatRequest, raw_request: Request):
         else:
             inputs = {"messages": [SYSTEM_PROMPT, HumanMessage(content=content)]}
 
+        kb_calls_logged = 0
+
         try:
             async for stream_kind, payload in graph.astream(
                 inputs, config=config, stream_mode=["updates", "messages"]
@@ -213,6 +215,16 @@ async def chat_endpoint(request: ChatRequest, raw_request: Request):
                         msg = payload["agent"]["messages"][-1]
                         if msg.tool_calls:
                             for t in msg.tool_calls:
+                                # tool_node enforces MAX_KB_CALLS_PER_TURN per-call, not just
+                                # per-round, and short-circuits any search_knowledge_base call
+                                # past the cap without executing it. Mirror that here so the
+                                # telemetry log doesn't show "ANALYZING" for a search that never
+                                # actually ran against Pinecone.
+                                if t["name"] == "search_knowledge_base":
+                                    kb_calls_logged += 1
+                                    if kb_calls_logged > MAX_KB_CALLS_PER_TURN:
+                                        yield "\n__LOG__⚠️ SEARCH BUDGET REACHED, SKIPPING...\n"
+                                        continue
                                 years = extract_years(request.message)
                                 year = t["args"].get("target_year", years[0] if years else DEFAULT_YEAR)
                                 # Leading \n: the model can stream preamble content (via the
